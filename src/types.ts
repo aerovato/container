@@ -6,6 +6,9 @@ export type Result<T, E = string> =
 
 export type BuildTarget = "full" | "harness" | "user";
 
+const RuntimeBinSchema = z.enum(["docker", "podman"]);
+export type RuntimeBin = z.infer<typeof RuntimeBinSchema>;
+
 export const DockerfileCoreConfigSchema = z.object({
   baseImage: z.string().optional(),
   workdir: z.string().optional(),
@@ -42,7 +45,7 @@ export const SettingsSchema = z.object({
   tosVersion: z.number().optional(),
   dockerfileCore: DockerfileCoreConfigSchema.optional(),
   enabledHarnesses: z.array(z.string()).optional(),
-  runtime: z.enum(["docker", "podman"]).optional(),
+  runtime: RuntimeBinSchema.optional(),
   systemMounts: SystemMountsSchema.optional(),
   dockerRunFlags: z.array(z.string()).optional(),
   dockerExecFlags: z.array(z.string()).optional(),
