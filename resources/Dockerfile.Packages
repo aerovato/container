@@ -1,3 +1,0 @@
-# User packages and build tools for code-container
-# Add your RUN, ENV, etc. directives below.
-FROM code-container-core:latest
