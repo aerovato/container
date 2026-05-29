@@ -29,6 +29,7 @@ export interface FsReader {
     options?: { recursive?: boolean; mode?: number },
   ): void;
   chmodSync(filePath: string, mode: number): void;
+  statSync(filePath: string): { isDirectory(): boolean };
 }
 
 function parseAndValidate<T>(
