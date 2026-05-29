@@ -6,82 +6,128 @@ const os = require("os");
 
 const APPDATA_DIR = path.join(os.homedir(), ".code-container");
 const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
-const RESOURCES_DIR = path.join(__dirname, "..", "resources");
+const TEMP_DIR = path.join(APPDATA_DIR, "temp");
+const ARCHIVE_DIR = path.join(APPDATA_DIR, "archive");
+const SETTINGS_PATH = path.join(APPDATA_DIR, "settings.json");
 const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");
+const RESOURCES_DIR = path.join(__dirname, "..", "resources");
 const PACKAGED_USER_DOCKERFILE = path.join(RESOURCES_DIR, "Dockerfile.User");
-const PACKAGES_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.Packages");
-const PACKAGED_PACKAGES_DOCKERFILE = path.join(
-  RESOURCES_DIR,
-  "Dockerfile.Packages",
-);
-const FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_FLAGS.txt");
-const RUN_FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_RUN_FLAGS.txt");
 
-if (!fs.existsSync(APPDATA_DIR)) {
-  fs.mkdirSync(APPDATA_DIR, { recursive: true, mode: 0o700 });
-}
+const CURRENT_MIGRATION_VERSION = 1;
 
-if (!fs.existsSync(CONFIGS_DIR)) {
-  fs.mkdirSync(CONFIGS_DIR, { recursive: true, mode: 0o700 });
-}
-
-if (!fs.existsSync(USER_DOCKERFILE_PATH)) {
-  fs.copyFileSync(PACKAGED_USER_DOCKERFILE, USER_DOCKERFILE_PATH);
-}
-
-if (!fs.existsSync(PACKAGES_DOCKERFILE_PATH)) {
-  fs.copyFileSync(PACKAGED_PACKAGES_DOCKERFILE, PACKAGES_DOCKERFILE_PATH);
-}
-
-if (!fs.existsSync(FLAGS_PATH)) {
-  fs.writeFileSync(
-    FLAGS_PATH,
-    "# Add custom Docker flags here (one per line)\n# Note: These flags are passed to every created container and every exec session.\n# Use DOCKER_RUN_FLAGS.txt for flags that only apply to 'docker run'.\n",
-  );
-}
-
-if (!fs.existsSync(RUN_FLAGS_PATH)) {
-  fs.writeFileSync(
-    RUN_FLAGS_PATH,
-    "# Add Docker run-only flags here (one per line)\n# Note: These flags are only passed to 'docker run', not 'docker exec'.\n# Use this for flags like -v, --network, --restart that are not valid for exec.\n",
-  );
-}
-
-// --- Migration: Remove stale core mounts from MOUNTS.txt ---
-// Prior to v2.2.0, `container init` wrote core mounts directly into MOUNTS.txt.
-// Core mounts are now applied in-memory at runtime (see getCoreMounts() in mounts.ts).
-// Old entries in MOUNTS.txt can conflict with updated core mounts (e.g. the old
-// /root/.local mount shadows the new /root/.local/share and /root/.local/state mounts).
-// This block removes those stale entries on upgrade.
-const MOUNTS_PATH = path.join(APPDATA_DIR, "MOUNTS.txt");
-const STALE_CONTAINER_PATHS = [
-  "/root/.claude",
-  "/root/.claude.json",
-  "/root/.codex",
-  "/root/.copilot",
-  "/root/.config/opencode",
-  "/root/.gemini",
-  "/root/.local",
-  "/root/.gitconfig",
-];
-
-if (fs.existsSync(MOUNTS_PATH)) {
-  const content = fs.readFileSync(MOUNTS_PATH, "utf-8");
-  const lines = content.split("\n");
-  const cleaned = lines.filter((line) => {
-    // Filter out all lines with target location in STALE_CONTAINER_PATHS
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) return true;
-    const parts = trimmed.split(":");
-    const containerPath = parts.length >= 2 ? parts[1] : null;
-    return (
-      containerPath === null || !STALE_CONTAINER_PATHS.includes(containerPath)
-    );
-  });
-  const cleanedContent = cleaned.join("\n");
-  if (cleanedContent !== content) {
-    fs.writeFileSync(MOUNTS_PATH, cleanedContent, { mode: 0o600 });
-    console.log("Note: Removed outdated core mounts from MOUNTS.txt");
+function readSettings() {
+  if (!fs.existsSync(SETTINGS_PATH)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf-8"));
+  } catch {
+    return {};
   }
 }
-// --- End Migration ---
+
+function writeSettings(settings) {
+  if (!fs.existsSync(APPDATA_DIR)) {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true, mode: 0o700 });
+  }
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), {
+    mode: 0o600,
+  });
+}
+
+
+function moveIfExists(src, destDir) {
+  if (fs.existsSync(src)) {
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    const basename = path.basename(src);
+    fs.renameSync(src, path.join(destDir, basename));
+  }
+}
+
+// --- Migration: undefined -> 1 (V2 -> V3) ---
+function migrateV2ToV3(settings) {
+  const MOUNTS_PATH = path.join(APPDATA_DIR, "MOUNTS.txt");
+  const FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_FLAGS.txt");
+  const RUN_FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_RUN_FLAGS.txt");
+  const PACKAGES_DOCKERFILE_PATH = path.join(
+    APPDATA_DIR,
+    "Dockerfile.Packages",
+  );
+
+  // Archive old files
+  moveIfExists(MOUNTS_PATH, ARCHIVE_DIR);
+  moveIfExists(FLAGS_PATH, ARCHIVE_DIR);
+  moveIfExists(RUN_FLAGS_PATH, ARCHIVE_DIR);
+  moveIfExists(PACKAGES_DOCKERFILE_PATH, ARCHIVE_DIR);
+
+  // Archive Dockerfile.User if it doesn't use the new base image
+  if (fs.existsSync(USER_DOCKERFILE_PATH)) {
+    const content = fs.readFileSync(USER_DOCKERFILE_PATH, "utf-8");
+    const hasNewBase = content
+      .split("\n")
+      .some((line) =>
+        line.trim().startsWith("FROM localhost/aerovato/container-v3-harness"),
+      );
+    if (!hasNewBase) {
+      moveIfExists(USER_DOCKERFILE_PATH, ARCHIVE_DIR);
+    }
+  }
+
+  // Remove old keys
+  delete settings.completedInit;
+  delete settings.acceptedTos;
+
+  return settings;
+}
+
+// --- Migration chain ---
+const MIGRATIONS = {
+  1: migrateV2ToV3,
+};
+
+// --- Setup tasks (run on every install) ---
+function setup() {
+  if (!fs.existsSync(APPDATA_DIR)) {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true, mode: 0o700 });
+  } else {
+    fs.chmodSync(APPDATA_DIR, 0o700);
+  }
+
+  if (!fs.existsSync(CONFIGS_DIR)) {
+    fs.mkdirSync(CONFIGS_DIR, { recursive: true, mode: 0o700 });
+  } else {
+    fs.chmodSync(CONFIGS_DIR, 0o700);
+  }
+
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true, mode: 0o700 });
+  }
+
+  if (!fs.existsSync(USER_DOCKERFILE_PATH)) {
+    fs.copyFileSync(PACKAGED_USER_DOCKERFILE, USER_DOCKERFILE_PATH);
+  }
+}
+
+// --- Main ---
+function main() {
+  setup();
+
+  const settings = readSettings();
+  const currentVersion = settings.migrationVersion || 0;
+
+  if (currentVersion < CURRENT_MIGRATION_VERSION) {
+    for (let v = currentVersion + 1; v <= CURRENT_MIGRATION_VERSION; v++) {
+      const migrate = MIGRATIONS[v];
+      if (migrate) {
+        migrate(settings);
+      }
+    }
+
+    settings.migrationVersion = CURRENT_MIGRATION_VERSION;
+    writeSettings(settings);
+  }
+}
+
+main();
