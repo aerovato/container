@@ -1,7 +1,7 @@
 import path from "path";
 import { printInfo, printSuccess, printWarning, printError } from "../utils";
 import clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { Runtime, Executor } from "../runtime";
 import { SettingsStore, StateStore, FsReader } from "../config";
 import { generateContainerName, buildImage, CONTAINER_IMAGE } from "../docker";
 import { resolveProjectPath, getBuildDirty } from "./shared";
@@ -19,6 +19,7 @@ interface ResolvedTarget {
 
 export async function runCommand(
   runtime: Runtime,
+  executor: Executor,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: FsReader,
@@ -102,7 +103,7 @@ export async function runCommand(
 
   printInfo("Attaching to container...");
   execInteractive(runtime, containerName, projectName, settings, cliFlags);
-  stopContainerIfLastSession(runtime, containerName, projectName);
+  stopContainerIfLastSession(executor, runtime, containerName, projectName);
   printSuccess("Container session ended");
 }
 

@@ -1,6 +1,5 @@
 import os from "os";
-import { spawnSync } from "child_process";
-import { Runtime } from "./runtime";
+import { Runtime, Executor } from "./runtime";
 import { CONFIGS_DIR } from "./config";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
@@ -88,15 +87,16 @@ export function execInteractive(
 }
 
 export function getOtherSessionCount(
+  executor: Executor,
   containerName: string,
   projectName: string,
 ): number {
-  const result = spawnSync("ps", ["ax", "-o", "command="], {
+  const result = executor.spawnSync("ps", ["ax", "-o", "command="], {
     encoding: "utf-8",
   });
   if (result.status !== 0) return 0;
 
-  const lines = result.stdout.split("\n");
+  const lines = result.stdout.toString().split("\n");
   let count = 0;
 
   for (const line of lines) {
@@ -115,11 +115,16 @@ export function getOtherSessionCount(
 }
 
 export function stopContainerIfLastSession(
+  executor: Executor,
   runtime: Runtime,
   containerName: string,
   projectName: string,
 ): void {
-  const otherSessions = getOtherSessionCount(containerName, projectName);
+  const otherSessions = getOtherSessionCount(
+    executor,
+    containerName,
+    projectName,
+  );
   if (otherSessions === 0) {
     runtime.stop(containerName);
   }

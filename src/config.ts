@@ -1,5 +1,7 @@
 import path from "path";
 import os from "os";
+// eslint-disable-next-line no-restricted-imports
+import type fs from "fs";
 import { z } from "zod";
 import {
   SettingsSchema,
@@ -16,23 +18,17 @@ export const SETTINGS_PATH = path.join(APPDATA_DIR, "settings.json");
 export const STATE_PATH = path.join(TEMP_DIR, "state.json");
 export const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");
 
-export interface FsReader {
-  existsSync(filePath: string): boolean;
-  readFileSync(filePath: string, encoding: string): string;
-  writeFileSync(
-    filePath: string,
-    content: string,
-    options?: { mode?: number },
-  ): void;
-  mkdirSync(
-    dirPath: string,
-    options?: { recursive?: boolean; mode?: number },
-  ): void;
-  chmodSync(filePath: string, mode: number): void;
-  statSync(filePath: string): { isDirectory(): boolean };
-  readdirSync(dirPath: string): string[];
-  cpSync(source: string, dest: string, options?: { recursive?: boolean }): void;
-}
+export type FsReader = Pick<
+  typeof fs,
+  | "existsSync"
+  | "readFileSync"
+  | "writeFileSync"
+  | "mkdirSync"
+  | "chmodSync"
+  | "statSync"
+  | "readdirSync"
+  | "cpSync"
+>;
 
 function parseAndValidate<T>(
   content: string,
