@@ -1,38 +1,108 @@
 import path from "path";
-import fs from "fs";
 import os from "os";
 import { z } from "zod";
+import {
+  SettingsSchema,
+  StateSchema,
+  Result,
+  Settings,
+  StateData,
+} from "./types";
 
 export const APPDATA_DIR = path.join(os.homedir(), ".code-container");
 export const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
-export const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");
-export const PACKAGES_DOCKERFILE_PATH = path.join(
-  APPDATA_DIR,
-  "Dockerfile.Packages",
-);
+export const TEMP_DIR = path.join(APPDATA_DIR, "temp");
 export const SETTINGS_PATH = path.join(APPDATA_DIR, "settings.json");
-export const MOUNTS_PATH = path.join(APPDATA_DIR, "MOUNTS.txt");
-export const FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_FLAGS.txt");
-export const RUN_FLAGS_PATH = path.join(APPDATA_DIR, "DOCKER_RUN_FLAGS.txt");
+export const STATE_PATH = path.join(TEMP_DIR, "state.json");
+export const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");
 
-export const SHARED_DIRS = [
-  ".claude",
-  ".codex",
-  ".copilot",
-  ".local/share",
-  ".local/state",
-  ".opencode",
-  ".gemini",
-];
+export interface FsReader {
+  existsSync(filePath: string): boolean;
+  readFileSync(filePath: string, encoding: string): string;
+  writeFileSync(
+    filePath: string,
+    content: string,
+    options?: { mode?: number },
+  ): void;
+  mkdirSync(
+    dirPath: string,
+    options?: { recursive?: boolean; mode?: number },
+  ): void;
+  chmodSync(filePath: string, mode: number): void;
+}
 
-const SettingsSchema = z.object({
-  completedInit: z.boolean().default(false),
-  acceptedTos: z.boolean().default(false),
-});
+function parseAndValidate<T>(
+  content: string,
+  schema: z.ZodSchema<T>,
+): Result<T> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    return { ok: false, error: "invalid_json" };
+  }
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    return { ok: false, error: "validation_failed" };
+  }
+  return { ok: true, value: result.data };
+}
 
-export type Settings = z.infer<typeof SettingsSchema>;
+export class SettingsStore {
+  constructor(
+    private fs: FsReader,
+    private filePath: string,
+  ) {}
 
-export function ensureAppdataDir(): void {
+  load(): Result<Settings> {
+    if (!this.fs.existsSync(this.filePath)) {
+      return { ok: true, value: {} };
+    }
+    const content = this.fs.readFileSync(this.filePath, "utf-8");
+    return parseAndValidate(content, SettingsSchema);
+  }
+
+  save(data: Settings): Result<void> {
+    ensureAppdataDir(this.fs);
+    try {
+      this.fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), {
+        mode: 0o600,
+      });
+      return { ok: true, value: undefined };
+    } catch {
+      return { ok: false, error: "permission_denied" };
+    }
+  }
+}
+
+export class StateStore {
+  constructor(
+    private fs: FsReader,
+    private filePath: string,
+  ) {}
+
+  load(): Result<StateData> {
+    if (!this.fs.existsSync(this.filePath)) {
+      return { ok: true, value: {} };
+    }
+    const content = this.fs.readFileSync(this.filePath, "utf-8");
+    return parseAndValidate(content, StateSchema);
+  }
+
+  save(data: StateData): Result<void> {
+    ensureTempDir(this.fs);
+    try {
+      this.fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), {
+        mode: 0o600,
+      });
+      return { ok: true, value: undefined };
+    } catch {
+      return { ok: false, error: "permission_denied" };
+    }
+  }
+}
+
+export function ensureAppdataDir(fs: FsReader): void {
   if (!fs.existsSync(APPDATA_DIR)) {
     fs.mkdirSync(APPDATA_DIR, { recursive: true, mode: 0o700 });
   } else {
@@ -40,71 +110,18 @@ export function ensureAppdataDir(): void {
   }
 }
 
-export function loadSettings(): Settings {
-  if (!fs.existsSync(SETTINGS_PATH)) {
-    return { completedInit: false, acceptedTos: false };
-  }
-  const content = fs.readFileSync(SETTINGS_PATH, "utf-8");
-  return SettingsSchema.parse(JSON.parse(content));
-}
-
-export function saveSettings(settings: Settings): void {
-  ensureAppdataDir();
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), {
-    mode: 0o600,
-  });
-}
-
-const CONFIG_SOURCES: Array<{ src: string; dest: string; isDir: boolean }> = [
-  {
-    src: path.join(os.homedir(), ".config", "opencode"),
-    dest: ".opencode",
-    isDir: true,
-  },
-  { src: path.join(os.homedir(), ".codex"), dest: ".codex", isDir: true },
-  { src: path.join(os.homedir(), ".copilot"), dest: ".copilot", isDir: true },
-  { src: path.join(os.homedir(), ".gemini"), dest: ".gemini", isDir: true },
-  { src: path.join(os.homedir(), ".claude"), dest: ".claude", isDir: true },
-  {
-    src: path.join(os.homedir(), ".claude.json"),
-    dest: ".claude.json",
-    isDir: false,
-  },
-];
-
-export function copyConfigs(): void {
-  ensureConfigDir();
-
-  for (const { src, dest, isDir } of CONFIG_SOURCES) {
-    const destPath = path.join(CONFIGS_DIR, dest);
-    if (fs.existsSync(src)) {
-      if (isDir) {
-        fs.cpSync(src, destPath, { recursive: true });
-      } else {
-        fs.copyFileSync(src, destPath);
-      }
-    }
-  }
-}
-
-export function ensureConfigDir(): void {
-  ensureAppdataDir();
-
+export function ensureConfigDir(fs: FsReader): void {
+  ensureAppdataDir(fs);
   if (!fs.existsSync(CONFIGS_DIR)) {
     fs.mkdirSync(CONFIGS_DIR, { recursive: true, mode: 0o700 });
   } else {
     fs.chmodSync(CONFIGS_DIR, 0o700);
   }
+}
 
-  for (const dir of SHARED_DIRS) {
-    const fullPath = path.join(CONFIGS_DIR, dir);
-    if (!fs.existsSync(fullPath)) {
-      fs.mkdirSync(fullPath, { recursive: true, mode: 0o700 });
-    }
-  }
-
-  const claudeJsonPath = path.join(CONFIGS_DIR, ".claude.json");
-  if (!fs.existsSync(claudeJsonPath)) {
-    fs.writeFileSync(claudeJsonPath, "{}", { mode: 0o600 });
+export function ensureTempDir(fs: FsReader): void {
+  ensureAppdataDir(fs);
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true, mode: 0o700 });
   }
 }
