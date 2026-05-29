@@ -1,3 +1,3 @@
-# User customizations for code-container
+# User customizations for container
 # Add your RUN, ENV, COPY, etc. directives below.
-FROM code-container-base:latest
+FROM localhost/aerovato/container-v3-harness:latest

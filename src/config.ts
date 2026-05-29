@@ -30,6 +30,8 @@ export interface FsReader {
   ): void;
   chmodSync(filePath: string, mode: number): void;
   statSync(filePath: string): { isDirectory(): boolean };
+  readdirSync(dirPath: string): string[];
+  cpSync(source: string, dest: string, options?: { recursive?: boolean }): void;
 }
 
 function parseAndValidate<T>(
