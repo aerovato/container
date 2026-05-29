@@ -3,7 +3,13 @@ import crypto from "crypto";
 import { printInfo } from "./utils";
 import { Runtime } from "./runtime";
 import { FsReader } from "./config";
-import { SettingsStore, StateStore, TEMP_DIR, APPDATA_DIR, USER_DOCKERFILE_PATH } from "./config";
+import {
+  SettingsStore,
+  StateStore,
+  TEMP_DIR,
+  APPDATA_DIR,
+  USER_DOCKERFILE_PATH,
+} from "./config";
 import {
   CORE_IMAGE,
   HARNESS_IMAGE,
@@ -14,11 +20,15 @@ import {
 import { generateDockerfileHarness } from "./dockerfile-harness";
 import { Result, BuildTarget } from "./types";
 
-const CONTAINER_PREFIX = "container";
-const IMAGE_TAG = "latest";
+export const CONTAINER_PREFIX = "container";
+export const IMAGE_TAG = "latest";
+export const CONTAINER_IMAGE = `${USER_IMAGE}:${IMAGE_TAG}`;
 
 export const CORE_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Core");
-export const HARNESS_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Harness");
+export const HARNESS_DOCKERFILE_PATH = path.join(
+  TEMP_DIR,
+  "Dockerfile.Harness",
+);
 
 export function generateContainerName(projectPath: string): string {
   const normalizedPath = projectPath.replace(/\/$/, "");
@@ -42,7 +52,7 @@ export function buildImage(
   if (!settingsResult.ok) return settingsResult;
   const settings = settingsResult.value;
 
-  if (target === "full" || target === "harness") {
+  if (target === "full") {
     const coreContent = generateDockerfileCore(
       resolveCoreConfig(settings.dockerfileCore ?? {}),
     );
@@ -100,14 +110,4 @@ function clearBuildDirty(stateStore: StateStore, target: BuildTarget): void {
     delete updated.buildDirty;
     stateStore.save(updated);
   }
-}
-
-export function getBuildDirty(stateStore: StateStore): "core" | "harness" | undefined {
-  const result = stateStore.load();
-  if (!result.ok) return undefined;
-  return result.value.buildDirty;
-}
-
-export function isContainerName(arg: string): boolean {
-  return arg.startsWith(`${CONTAINER_PREFIX}-`);
 }
