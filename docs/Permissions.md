@@ -45,7 +45,7 @@ Add the following properties:
 
 Gemini uses a "policy engine" to determine tool usage approvals. To bypass permissions, perform the following:
 
-1. Navigte to the configuration storage location if not already:
+1. Navigate to the configuration storage location if not already:
 
    ```bash
    cd ~/.code-container/configs
