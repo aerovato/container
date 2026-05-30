@@ -1,6 +1,6 @@
 {
-  "name": "code-container",
-  "version": "2.5.0",
+  "name": "@aerovato/container",
+  "version": "3.0.0",
   "description": "Manage isolated Docker containers for running coding tools on different projects",
   "main": "dist/main.js",
   "bin": {
@@ -30,10 +30,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevinMEH/code-container.git"
+    "url": "git+https://github.com/aerovato/container.git"
   },
-  "bugs": "https://github.com/kevinMEH/code-container/issues",
-  "homepage": "https://github.com/kevinMEH/code-container",
+  "bugs": "https://github.com/aerovato/container/issues",
+  "homepage": "https://github.com/aerovato/container",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^20.19.37",
