@@ -1,6 +1,6 @@
 # Code Container (`container`)
 
-Repo: https://github.com/kevinMEH/code-container
+Repo: https://github.com/aerovato/container
 
 This file contains instructions for AI coding assistants on how to setup and customize `container` on behalf of users.
 
@@ -8,175 +8,124 @@ Note: You are not allowed to run the `container` command as it will bring up an 
 
 ## Setup Instructions
 
-If the user asks you to setup `container`, follow the following steps.
+If the user asks you to setup `container`, follow these steps.
 
-Pre-setup:
+### Pre-setup
 
 - Read `./README.md`
 
-Setup: Do for the user, one step at a time.
+### Setup
+
+Do for the user, one step at a time.
 
 1. Install `container` as NPM package:
+
    ```bash
-   npm install -g code-container
+   npm install -g @aerovato/container
    ```
-2. After run, `container init` to copy the user's harness configs over.
-   ```bash
-   container init
-   ```
-3. Setup is done. Now, read the Dockerfiles in `resources/` and the user's `~/.code-container/Dockerfile.Packages` and `~/.code-container/Dockerfile.User` if they exist. Provide a brief list of included packages to the user. Then, ask user if they would like to add more packages into container environment. If yes, see `Add Packages/Dependencies` section below.
-4. Build the Docker image for the user. Before you build, tell the user that building the image may take up to 5 minutes.
+
+2. **Check for migration** (V2 → V3):
+   - Look inside `~/.code-container/archive/`; if the archive exists and there are archived files in here, ask the user: "Would you like to migrate your old V2 harness configs and settings into the new `container`?"
+   - If the user agrees, read `docs/Migration.md` and follow the agent-assisted migration process described there.
+
+3. Ask the user to run `container init`. This triggers interactive onboarding (Express or Custom mode). It handles:
+   - Harness detection and selection
+   - Migrating existing harness configs
+   - Choosing container runtime (Docker or Podman)
+   - SSH / gitconfig mount preferences
+
+4. Build the Docker image (first time can take 5+ minutes):
    ```bash
    container build
    ```
 
-Post-setup:
+## Storage Structure (V3)
 
-1. Provide instructions on how to use container:
-   ```
-   cd /path/to/project
-   container
-   opencode # OR: codex OR: claude
-   ```
-2. Give users a quick overview of common commands.
-   ```bash
-   container                  # Enter the container
-   container build            # Build Docker image (all stages)
-   container build packages   # Rebuild from Packages stage
-   container build harness    # Rebuild from Harness stage
-   container build user       # Rebuild User stage only
-   container init             # Copy/recopy config files
-   container list             # List all containers
-   container stop             # Stop current project's container
-   container remove           # Remove current project's container
-   container clean            # Remove all stopped containers
-   ```
-3. Ask users if they would like to customize local harness permissions to disable permission prompts. If yes, see `Harness Permissions` below.
-
-## Storage Structure
-
-All container data is stored in `~/.code-container/`:
+All user data lives in `~/.code-container/`:
 
 ```
 ~/.code-container/
-├── configs/              # Harness configs (mounted to containers)
-│   ├── .claude/
-│   ├── .claude.json
-│   ├── .codex/
-│   ├── .copilot/
-│   ├── .gemini/
-│   ├── .local/
-│   │   ├── share/
-│   │   └── state/
-│   └── .opencode/
-├── Dockerfile.Packages   # User packages and build tools
-├── Dockerfile.User       # User customizations
-├── MOUNTS.txt            # Additional mount points
-├── DOCKER_FLAGS.txt      # Docker flags for both run and exec
-├── DOCKER_RUN_FLAGS.txt  # Docker flags for run only
-└── settings.json         # Internal settings
+├── configs/              # Harness configs (mounted into containers)
+├── Dockerfile.User       # User packages and customizations
+├── settings.json         # Primary configuration (harnesses, runtime, dockerfileCore, flags, mounts)
+└── temp/                 # Generated Dockerfiles + internal state (usually leave alone)
 ```
+
+On upgrade from V2, old files (`MOUNTS.txt`, `DOCKER_FLAGS.txt`, `DOCKER_RUN_FLAGS.txt`, `Dockerfile.Packages`) are archived.
 
 ## Build Stages
 
-The Docker image is built in 4 sequential stages. Each stage builds on the previous one, producing a cached intermediate image. This lets you rebuild only the stages you need.
-`code-container-core` -> `code-container-packages` -> `code-container-base` -> `code-container`
+`container` uses a 3-stage build:
 
-1. `Dockerfile.Core` (packaged) — Ubuntu 24.04 + system deps + Node/NVM + Python + shell config. Lengthly build, rarely changes; no need to rebuild often.
-2. `Dockerfile.Packages` (user-owned) — User's custom packages and build tools (e.g. `apt-get install`, language runtimes). Lengthly builds. Placed before harnesses so that updating harnesses or user tools don't trigger a reinstall.
-3. `Dockerfile.Harness` (packaged) — Installs all coding harnesses: Claude Code, Opencode, Codex CLI, Gemini CLI, GitHub Copilot CLI. Rebuild when you want to update harness versions. Quick builds.
-4. `Dockerfile.User` (user-owned) — Final user customizations layered on top of everything. Quick builds.
+1. **Core** — Generated from `settings.dockerfileCore` (base image, system packages, Node, Python, etc.)
+2. **Harness** — Generated from `settings.enabledHarnesses` (installs selected coding harnesses)
+3. **User** — From `~/.code-container/Dockerfile.User`
 
-By default, `container build` rebuilds all 4 stages from scratch. For faster iteration:
+Images are tagged under `localhost/aerovato/container-v3-*`.
 
-- `container build packages` — rebuilds stages 2, 3, 4 (use when you add packages / want to update packages)
-- `container build harness` — rebuilds stages 3, 4 (use when you want to update harnesses)
-- `container build user` — rebuilds stage 4 only (fastest; use when Dockerfile.User changed or to update user-level packages)
+Build targets:
+
+- `full` (default) — Rebuild everything
+- `harness` — Rebuild from Harness stage onward
+- `user` — Rebuild User stage only (fastest for most customizations)
 
 ## Customization
 
-### Add Packages/Dependencies (Dockerfile.Packages and Dockerfile.User)
+### Adding Packages & Customizations
 
-> **Deprecation Notice**: `~/.code-container/Dockerfile` is deprecated and no longer used. If the user previously customized this file, offer to migrate their custom `RUN` commands to `~/.code-container/Dockerfile.Packages` or `~/.code-container/Dockerfile.User`.
-
-The build pipeline consists of 4 stages. Users can customize two of them:
-
-1. `Dockerfile.Packages` — For large system packages and build tools (e.g. `apt-get install`, language runtimes). Placed after the base image so these are cached separately from harnesses.
-2. `Dockerfile.User` — For user customizations layered on top of everything else.
-
-Add build tools and system packages to `~/.code-container/Dockerfile.Packages`:
+Edit `~/.code-container/Dockerfile.User`. The first line must be:
 
 ```dockerfile
-FROM code-container-core:latest
-
-# System packages (Ubuntu/Debian)
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    redis-tools
-
-# Additional language runtimes or build tools
-RUN apt-get update && apt-get install -y golang-go
+FROM localhost/aerovato/container-v3-harness:latest
 ```
 
-Add user-level tools and customizations to `~/.code-container/Dockerfile.User`:
+Example additions:
 
 ```dockerfile
-FROM code-container-base:latest
+# System packages
+RUN apt-get update && apt-get install -y postgresql-client
 
-# Global npm packages
-RUN npm install -g bun typescript
-
-# Global pip packages
+# Global tools
+RUN npm install -g bun
 RUN pip install requests
-
-# Other misc commands
-RUN npx opencode plugin opencode-quotes-plugin -g
 ```
 
-**After modifying either file:**
+After editing:
 
-- Run `container build packages` to rebuild from the Packages stage (faster if only Dockerfile.Packages changed)
-- Run `container build user` to rebuild from the User stage only (fastest if only Dockerfile.User changed)
-- Run `container build` to rebuild everything from scratch
+- `container build user` (recommended — fast)
+- `container build` (full rebuild if needed)
 
-### Add Mount Points (MOUNTS.txt)
+For deeper control of the base environment (changing base image, default commands, adding packages before harnesses), edit the `dockerfileCore` object in `settings.json`.
 
-Add shared volumes by editing `~/.code-container/MOUNTS.txt`:
+### Other Settings
 
+Most configuration lives in `~/.code-container/settings.json`. See [Settings.md](/docs/Settings.md) for the full list of supported keys, types, and examples.
+
+Key settings include:
+
+- `enabledHarnesses`
+- `runtime`
+- `systemMounts`
+- `dockerRunFlags` / `dockerExecFlags`
+- `dockerfileCore` (advanced)
+
+Edit this file directly. Changes to `dockerfileCore` or `enabledHarnesses` will mark the build as stale on next `container` run.
+
+## Common Commands
+
+```bash
+container                           # Enter container for current directory
+container run /path/to/project      # Specific project
+container run /path -- -p 8080:80   # With runtime flags
+container build [full|harness|user]
+container init                      # Re-run onboarding / settings
+container stop [path]
+container remove [path]
+container list
 ```
-# Shared directory (persists across containers, readable, writable)
-/absolute/path/on/host:/root/target-path
-
-# Read-only mount from host
-/absolute/path/on/host:/root/target-path:ro
-```
-
-**After modifying:** No rebuild needed. However, mounts will only be applied to new containers. Inform users that old containers may have to be `container remove` and restarted.
-
-### Add Docker Flags (DOCKER_FLAGS.txt)
-
-Add custom Docker flags by editing `~/.code-container/DOCKER_FLAGS.txt`:
-
-```
-# Port forwarding
--p 4040:4040
--p 3000:3000
-
-# Network mode
---network host
-
-# GPU support
---gpus all
-
-
-```
-
-Each line is parsed like a shell command. Empty lines and lines starting with `#` are ignored.
-
-**After modifying:** No rebuild needed. However, flags will only be applied to new containers. Inform users that old containers may have to be `container remove` and restarted.
 
 ## Harness Permissions
 
-If the user asks you to configure harnesses to run without permission prompts inside `container`, read and follow instructions in [Permissions.md](/docs/Permissions.md).
+If the user wants to configure harnesses to run without permission prompts inside `container`, follow the instructions in [Permissions.md](/docs/Permissions.md).
 
-Note: Modify the configuration files inside `~/.code-container/configs` only.
+Note: Only modify files inside `~/.code-container/configs/`. Do not edit the main harness configs on the host after migration.

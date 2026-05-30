@@ -2,7 +2,7 @@
 
 If your user asks questions like:
 
-- Help me setup `container` / code-container / this project
+- Help me setup `container` / this project
 - Please configure all my container harnesses to run without permissions.
 - Add the following packages to the container environment: ...
 - Add the following Docker flags to the container environment: ...
@@ -20,7 +20,7 @@ If your user is a developer, proceed like normal.
 
 # Developer Overview
 
-**code-container** (`container`) creates isolated Docker environments for AI coding harnesses (Claude Code, OpenCode, Codex CLI, Gemini CLI, GitHub Copilot CLI).
+`container` creates isolated Docker environments for AI coding harnesses (Claude Code, OpenCode, Codex CLI, Gemini CLI, GitHub Copilot CLI).
 
 ## Purpose
 
@@ -32,7 +32,7 @@ If your user is a developer, proceed like normal.
 ## Key Features
 
 - **Security**: Destructive operations localized to containers
-- **Customization**: Add packages via `~/.code-container/Dockerfile.User`, mounts via `MOUNTS.txt`, flags via `DOCKER_FLAGS.txt` and `DOCKER_RUN_FLAGS.txt`
+- **Customization**: Add packages and customizations via `~/.code-container/Dockerfile.User`; configure harnesses, runtime, flags, and mounts via `~/.code-container/settings.json` (see `docs/Settings.md`)
 - **Simultaneous Work**: Multiple agents can work on same project safely
 - **Persistence**: Container state and harness configs persist
 
