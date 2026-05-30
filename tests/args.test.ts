@@ -20,11 +20,11 @@ describe("parseArgs", () => {
   });
 
   describe("default (no args)", () => {
-    it("returns run with empty path", () => {
+    it("returns run with undefined target", () => {
       const result = parseArgs([]);
       expect(result).toEqual({
         command: "run",
-        projectPath: "",
+        target: undefined,
         cliFlags: [],
       });
     });
@@ -69,13 +69,6 @@ describe("parseArgs", () => {
       });
     });
 
-    it("parses packages target", () => {
-      expect(parseArgs(["build", "packages"])).toEqual({
-        command: "build",
-        target: "packages",
-      });
-    });
-
     it("parses harness target", () => {
       expect(parseArgs(["build", "harness"])).toEqual({
         command: "build",
@@ -100,7 +93,7 @@ describe("parseArgs", () => {
     it("parses with path only", () => {
       expect(parseArgs(["run", "/path/to/project"])).toEqual({
         command: "run",
-        projectPath: "/path/to/project",
+        target: "/path/to/project",
         cliFlags: [],
       });
     });
@@ -110,15 +103,15 @@ describe("parseArgs", () => {
         parseArgs(["run", "/path/to/project", "--", "-p", "8080:80"]),
       ).toEqual({
         command: "run",
-        projectPath: "/path/to/project",
+        target: "/path/to/project",
         cliFlags: ["-p", "8080:80"],
       });
     });
 
-    it("parses with only docker flags (empty path)", () => {
+    it("parses with only docker flags (undefined target)", () => {
       expect(parseArgs(["run", "--", "-e", "FOO=bar"])).toEqual({
         command: "run",
-        projectPath: "",
+        target: undefined,
         cliFlags: ["-e", "FOO=bar"],
       });
     });
@@ -135,14 +128,14 @@ describe("parseArgs", () => {
     it("parses with path", () => {
       expect(parseArgs(["stop", "/path/to/project"])).toEqual({
         command: "stop",
-        projectPath: "/path/to/project",
+        target: "/path/to/project",
       });
     });
 
-    it("parses with empty path", () => {
+    it("parses with undefined target", () => {
       expect(parseArgs(["stop"])).toEqual({
         command: "stop",
-        projectPath: "",
+        target: undefined,
       });
     });
 
@@ -156,7 +149,7 @@ describe("parseArgs", () => {
     it("parses with path", () => {
       expect(parseArgs(["remove", "/path"])).toEqual({
         command: "remove",
-        projectPath: "/path",
+        target: "/path",
       });
     });
   });
@@ -180,12 +173,6 @@ describe("parseArgs", () => {
     it("rejects extra args", () => {
       expect(() => parseArgs(["list", "extra"])).toThrow("process.exit");
       expect(exitSpy).toHaveBeenCalledWith(1);
-    });
-  });
-
-  describe("clean", () => {
-    it("parses clean", () => {
-      expect(parseArgs(["clean"])).toEqual({ command: "clean" });
     });
   });
 });
