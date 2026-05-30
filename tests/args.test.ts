@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../src/utils", () => ({
-  printError: vi.fn(),
-}));
-
 import { parseArgs } from "../src/args";
 
 describe("parseArgs", () => {
