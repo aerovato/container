@@ -1,4 +1,4 @@
-import clack from "@clack/prompts";
+import * as clack from "@clack/prompts";
 import { SettingsStore } from "./config";
 
 export const LATEST_TOS_VERSION = 3;
