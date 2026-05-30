@@ -1,104 +1,104 @@
 #!/usr/bin/env node
 
-import { printInfo, promptYesNo, resolveProjectPath } from "./utils";
+// eslint-disable-next-line no-restricted-imports
+import fs from "fs";
+// eslint-disable-next-line no-restricted-imports
+import { spawnSync } from "child_process";
+import { printError } from "./utils";
 import {
-  buildImage,
-  runContainer,
-  stopContainerForProject,
-  removeContainerForProject,
-  listContainers,
-  cleanContainers,
-  init,
-} from "./commands";
-import { checkDocker } from "./docker";
-import { loadSettings, saveSettings } from "./config";
-import { ensureMountsFile } from "./mounts";
+  SettingsStore,
+  StateStore,
+  FsReader,
+  SETTINGS_PATH,
+  STATE_PATH,
+  ensureAppdataDir,
+  ensureConfigDir,
+  ensureTempDir,
+} from "./config";
+import { Runtime, Executor } from "./runtime";
+import { ensureTosAccepted } from "./tos";
+import { needsOnboarding, runOnboarding } from "./onboarding";
 import { parseArgs } from "./args";
+import { buildCommand } from "./commands/build";
+import { runCommand } from "./commands/run";
+import { stopCommand } from "./commands/stop";
+import { removeCommand } from "./commands/remove";
+import { listCommand } from "./commands/list";
+import { getDefaultRuntime } from "./commands/shared";
 
-const TOS = `
-\x1b[33m⚠️  Security Advisory:\x1b[0m
-
-The main purpose of Code Container is to protect commands like 'rm' or 'apt'
-from unintentionally affecting your main system.
-
-container does not protect from prompt injections in the event that an agent
-becomes malaligned.
-
-This is an innate problem within coding harness software and container does
-not attempt to solve it.
-
-Users are advised to not download or work with unverified software.
-- Sensitive information inside the container may still be exfiltrated by
-  an attacker just as with your regular system.
-  - This includes:
-  - OAuth credentials inside harness configs
-  - API keys inside harness configs
-  - SSH keys for git functionality if enabled
-
-Never install or run your harness on unverified software. By using Code
-Container, you agree that you are aware of these risks and will not hold the
-author liable for any outcomes arising from usage of the software.
-`;
-
-async function ensureTosAccepted(): Promise<boolean> {
-  const settings = loadSettings();
-  if (settings.acceptedTos) {
-    return true;
-  }
-
-  console.log(TOS);
-  const accepted = await promptYesNo("Do you accept these terms?");
-  if (accepted) {
-    settings.acceptedTos = true;
-    saveSettings(settings);
-    return true;
-  }
-  return false;
-}
+const executor: Executor = { spawnSync };
 
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
-  if (!(await ensureTosAccepted())) {
-    printInfo("Terms not accepted. Exiting...");
+  const fsReader: FsReader = fs;
+  ensureAppdataDir(fsReader);
+  ensureConfigDir(fsReader);
+  ensureTempDir(fsReader);
+  const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
+  const stateStore = new StateStore(fsReader, STATE_PATH);
+
+  if (!(await ensureTosAccepted(settingsStore))) {
     process.exit(1);
   }
 
-  await ensureMountsFile();
+  const settingsResult = settingsStore.load();
+  if (!settingsResult.ok) {
+    printError("Failed to load settings");
+    process.exit(1);
+  }
+  let settings = settingsResult.value;
 
-  if (parsed.command === "init") {
-    await init();
-    return;
+  if (parsed.command === "init" || needsOnboarding(settings)) {
+    const onboardResult = await runOnboarding(fsReader, executor, settings);
+    settings = onboardResult.settings;
+    settingsStore.save(settings);
+    stateStore.save(onboardResult.state);
+
+    if (parsed.command === "init") return;
   }
 
-  checkDocker();
-  await init(true);
+  if (!settings.runtime) {
+    const detected = getDefaultRuntime(executor);
+    if (detected) {
+      settings.runtime = detected;
+      settingsStore.save(settings);
+    }
+  }
+
+  if (!settings.runtime) {
+    printError(
+      "No container runtime found. Install Docker or Podman to continue.",
+    );
+    process.exit(1);
+  }
+
+  const runtime = new Runtime(executor, settings.runtime);
 
   switch (parsed.command) {
     case "list":
-      listContainers();
-      return;
-    case "clean":
-      cleanContainers();
+      listCommand(runtime);
       return;
     case "build":
-      buildImage(parsed.target);
+      buildCommand(runtime, settingsStore, stateStore, fsReader, parsed.target);
       return;
-    case "stop": {
-      const resolved = resolveProjectPath(parsed.projectPath);
-      stopContainerForProject(resolved);
+    case "stop":
+      stopCommand(runtime, parsed.target);
       return;
-    }
-    case "remove": {
-      const resolved = resolveProjectPath(parsed.projectPath);
-      removeContainerForProject(resolved);
+    case "remove":
+      removeCommand(runtime, parsed.target);
       return;
-    }
-    case "run": {
-      const resolved = resolveProjectPath(parsed.projectPath);
-      await runContainer(resolved, parsed.cliFlags);
+    case "run":
+      await runCommand(
+        runtime,
+        executor,
+        settingsStore,
+        stateStore,
+        fsReader,
+        parsed.target,
+        parsed.cliFlags,
+      );
       return;
-    }
   }
 }
 

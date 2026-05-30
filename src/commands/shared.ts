@@ -36,17 +36,6 @@ export function getRuntimeAvailability(executor: Executor): {
 
 export function getDefaultRuntime(executor: Executor): RuntimeBin | undefined {
   const { docker, podman } = getRuntimeAvailability(executor);
-  if (docker && !podman) return "docker";
-  if (!docker && podman) return "podman";
-  if (docker && podman)
-    return process.platform === "linux" ? "podman" : "docker";
-  return undefined;
-}
-
-export function selectDefaultRuntime(
-  docker: boolean,
-  podman: boolean,
-): RuntimeBin | undefined {
   if (!docker && !podman) return undefined;
   if (docker && !podman) return "docker";
   if (!docker && podman) return "podman";
