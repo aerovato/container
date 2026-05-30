@@ -1,4 +1,4 @@
-import { printInfo, printSuccess, printError } from "../utils";
+import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
 import { resolveContainerTarget } from "./shared";
 
@@ -9,16 +9,16 @@ export function removeCommand(
   const containerName = resolveContainerTarget(target);
 
   if (!runtime.containerExists(containerName)) {
-    printError(`Container does not exist: ${containerName}`);
+    clack.log.error(`Container does not exist: ${containerName}`);
     process.exit(1);
   }
 
   if (runtime.containerRunning(containerName)) {
-    printInfo(`Stopping container: ${containerName}`);
+    clack.log.info(`Stopping container: ${containerName}`);
     runtime.stop(containerName);
   }
 
-  printInfo(`Removing container: ${containerName}`);
+  clack.log.info(`Removing container: ${containerName}`);
   runtime.remove(containerName);
-  printSuccess("Container removed");
+  clack.log.success("Container removed");
 }

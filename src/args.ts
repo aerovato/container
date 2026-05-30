@@ -1,4 +1,4 @@
-import { printError } from "./utils";
+import * as clack from "@clack/prompts";
 import { BuildTarget } from "./types";
 
 const BUILD_TARGETS: BuildTarget[] = ["full", "harness", "user"];
@@ -53,7 +53,7 @@ Examples:
 }
 
 function fatal(msg: string[]): never {
-  msg.forEach(printError);
+  msg.forEach((m) => clack.log.error(m));
   process.exit(1);
 }
 

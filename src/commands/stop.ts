@@ -1,4 +1,4 @@
-import { printInfo, printSuccess, printWarning, printError } from "../utils";
+import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
 import { resolveContainerTarget } from "./shared";
 
@@ -9,15 +9,15 @@ export function stopCommand(
   const containerName = resolveContainerTarget(target);
 
   if (!runtime.containerExists(containerName)) {
-    printError(`Container does not exist: ${containerName}`);
+    clack.log.error(`Container does not exist: ${containerName}`);
     process.exit(1);
   }
 
   if (runtime.containerRunning(containerName)) {
-    printInfo(`Stopping container: ${containerName}`);
+    clack.log.info(`Stopping container: ${containerName}`);
     runtime.stop(containerName);
-    printSuccess("Container stopped");
+    clack.log.success("Container stopped");
   } else {
-    printWarning(`Container is not running: ${containerName}`);
+    clack.log.warn(`Container is not running: ${containerName}`);
   }
 }
