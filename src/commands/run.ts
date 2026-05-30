@@ -1,5 +1,4 @@
 import path from "path";
-import { printInfo, printSuccess, printWarning, printError } from "../utils";
 import * as clack from "@clack/prompts";
 import { Runtime, Executor } from "../runtime";
 import { SettingsStore, StateStore, FsReader } from "../config";
@@ -28,7 +27,7 @@ export async function runCommand(
 ): Promise<void> {
   const settingsResult = settingsStore.load();
   if (!settingsResult.ok) {
-    printError("Failed to load settings");
+    clack.log.error("Failed to load settings");
     process.exit(1);
   }
   const settings = settingsResult.value;
@@ -57,30 +56,30 @@ export async function runCommand(
         buildTarget,
       );
       if (!result.ok) {
-        printError("Failed to build image");
+        clack.log.error("Failed to build image");
         process.exit(1);
       }
-      printSuccess("Image built successfully");
+      clack.log.success("Image built successfully");
     } else {
-      printWarning(
+      clack.log.warn(
         `Continuing with existing image. Run 'container build ${buildTarget}' to rebuild.`,
       );
     }
   }
 
   if (!runtime.imageExists(CONTAINER_IMAGE)) {
-    printWarning("Image not found. Building...");
+    clack.log.warn("Image not found. Building...");
     const result = buildImage(runtime, settingsStore, stateStore, fs, "full");
     if (!result.ok) {
-      printError("Failed to build image");
+      clack.log.error("Failed to build image");
       process.exit(1);
     }
-    printSuccess("Image built successfully");
+    clack.log.success("Image built successfully");
   }
 
   if (!runtime.containerExists(containerName)) {
-    printInfo(`Creating new container: ${containerName}`);
-    printInfo(`Project: ${projectPath}`);
+    clack.log.info(`Creating new container: ${containerName}`);
+    clack.log.info(`Project: ${projectPath}`);
 
     const result = createNewContainer(
       runtime,
@@ -91,20 +90,20 @@ export async function runCommand(
       cliFlags,
     );
     if (!result.ok) {
-      printError("Failed to create container");
+      clack.log.error("Failed to create container");
       process.exit(1);
     }
   }
 
   if (!runtime.containerRunning(containerName)) {
-    printInfo(`Starting container: ${containerName}`);
+    clack.log.info(`Starting container: ${containerName}`);
     runtime.start(containerName);
   }
 
-  printInfo("Attaching to container...");
+  clack.log.info("Attaching to container...");
   execInteractive(runtime, containerName, projectName, settings, cliFlags);
   stopContainerIfLastSession(executor, runtime, containerName, projectName);
-  printSuccess("Container session ended");
+  clack.log.success("Container session ended");
 }
 
 function resolveTarget(
@@ -113,7 +112,7 @@ function resolveTarget(
 ): ResolvedTarget | null {
   const projectPath = resolveProjectPath(target);
   if (!fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
-    printError(`Project directory does not exist: ${projectPath}`);
+    clack.log.error(`Project directory does not exist: ${projectPath}`);
     return null;
   }
   const containerName = generateContainerName(projectPath);

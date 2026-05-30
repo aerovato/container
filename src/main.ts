@@ -4,7 +4,7 @@
 import fs from "fs";
 // eslint-disable-next-line no-restricted-imports
 import { spawnSync } from "child_process";
-import { printError } from "./utils";
+import * as clack from "@clack/prompts";
 import {
   SettingsStore,
   StateStore,
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 
   const settingsResult = settingsStore.load();
   if (!settingsResult.ok) {
-    printError("Failed to load settings");
+    clack.log.error("Failed to load settings");
     process.exit(1);
   }
   let settings = settingsResult.value;
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   }
 
   if (!settings.runtime) {
-    printError(
+    clack.log.error(
       "No container runtime found. Install Docker or Podman to continue.",
     );
     process.exit(1);

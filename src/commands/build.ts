@@ -1,4 +1,4 @@
-import { printInfo, printSuccess, printError } from "../utils";
+import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
 import { SettingsStore, StateStore, FsReader } from "../config";
 import { buildImage } from "../docker";
@@ -11,11 +11,11 @@ export function buildCommand(
   fs: FsReader,
   target: BuildTarget,
 ): void {
-  printInfo(`Building container image (target: ${target})`);
+  clack.log.info(`Building container image (target: ${target})`);
   const result = buildImage(runtime, settingsStore, stateStore, fs, target);
   if (!result.ok) {
-    printError("Failed to build image");
+    clack.log.error("Failed to build image");
     process.exit(1);
   }
-  printSuccess("Image built successfully");
+  clack.log.success("Image built successfully");
 }

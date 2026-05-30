@@ -1,6 +1,6 @@
 import path from "path";
 import crypto from "crypto";
-import { printInfo } from "./utils";
+import * as clack from "@clack/prompts";
 import { Runtime } from "./runtime";
 import { FsReader } from "./config";
 import {
@@ -57,7 +57,7 @@ export function buildImage(
       resolveCoreConfig(settings.dockerfileCore ?? {}),
     );
     fs.writeFileSync(CORE_DOCKERFILE_PATH, coreContent);
-    printInfo(`Building: ${CORE_IMAGE}`);
+    clack.log.info(`Building: ${CORE_IMAGE}`);
     const coreResult = runtime.build(
       CORE_DOCKERFILE_PATH,
       `${CORE_IMAGE}:${IMAGE_TAG}`,
@@ -70,7 +70,7 @@ export function buildImage(
     const enabledIds = settings.enabledHarnesses ?? [];
     const harnessContent = generateDockerfileHarness(enabledIds);
     fs.writeFileSync(HARNESS_DOCKERFILE_PATH, harnessContent);
-    printInfo(`Building: ${HARNESS_IMAGE}`);
+    clack.log.info(`Building: ${HARNESS_IMAGE}`);
     const harnessResult = runtime.build(
       HARNESS_DOCKERFILE_PATH,
       `${HARNESS_IMAGE}:${IMAGE_TAG}`,
@@ -79,7 +79,7 @@ export function buildImage(
     if (!harnessResult.ok) return harnessResult;
   }
 
-  printInfo(`Building: ${USER_IMAGE}`);
+  clack.log.info(`Building: ${USER_IMAGE}`);
   const userResult = runtime.build(
     USER_DOCKERFILE_PATH,
     `${USER_IMAGE}:${IMAGE_TAG}`,
