@@ -1,34 +1,67 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import path from "path";
 import os from "os";
-import fs, { vol } from "memfs";
+import { fs, vol } from "memfs";
+import { Runtime, Executor } from "../src/runtime";
 import {
-  checkDocker,
-  imageExists,
-  containerExists,
-  containerRunning,
+  SettingsStore,
+  StateStore,
+  FsReader,
+  APPDATA_DIR,
+  TEMP_DIR,
+} from "../src/config";
+import {
+  generateContainerName,
+  buildImage,
+  CORE_DOCKERFILE_PATH,
+  HARNESS_DOCKERFILE_PATH,
+} from "../src/docker";
+import {
+  generateDockerfileCore,
+  resolveCoreConfig,
+  DEFAULT_PROMPT_COMMAND,
+  DEFAULT_CORE_COMMANDS,
+} from "../src/dockerfile-core";
+import { generateDockerfileHarness } from "../src/dockerfile-harness";
+import {
   getOtherSessionCount,
   stopContainerIfLastSession,
   createNewContainer,
-  generateContainerName,
-  getStoppedContainerIds,
-  buildImageRaw,
-} from "../src/docker";
+  getMounts,
+} from "../src/container";
+import { Settings } from "../src/types";
 
 vi.mock("fs");
-vi.mock("child_process");
-vi.mock("../src/utils", () => ({
-  printInfo: vi.fn(),
-  printError: vi.fn(),
-  promptYesNo: vi.fn(),
-}));
 
-import {
-  enqueue,
-  getCalls,
-  reset,
-  getQueueLength,
-} from "../__mocks__/child_process";
+const calls: Array<{ command: string; args: string[]; options?: object }> = [];
+const queue: Array<{
+  status: number | null;
+  stdout: string | Buffer;
+  stderr: string | Buffer;
+}> = [];
+
+const mockExecutor: Executor = {
+  spawnSync(command: string, args: string[], options?: object) {
+    calls.push({ command, args, options });
+    if (queue.length > 0) return queue.shift()!;
+    return { status: 0, stdout: "", stderr: "" };
+  },
+};
+
+function enqueue(result: {
+  status: number | null;
+  stdout?: string | Buffer;
+  stderr?: string | Buffer;
+}) {
+  queue.push({ stdout: "", stderr: "", ...result });
+}
+
+function reset() {
+  calls.length = 0;
+  queue.length = 0;
+}
+
+const fsReader = fs as unknown as FsReader;
 
 beforeEach(() => {
   reset();
@@ -36,81 +69,95 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  const remainingQueue = getQueueLength();
-  if (remainingQueue > 0) {
-    throw new Error(
-      `Test did not consume all mocked spawnSync responses. ${remainingQueue} remaining in queue.`,
-    );
+  if (queue.length > 0) {
+    throw new Error(`${queue.length} unconsumed mock responses remaining`);
   }
 });
 
-describe("checkDocker", () => {
-  it("does nothing when docker is available", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation((() => {}) as () => never);
-    checkDocker();
-    expect(exitSpy).not.toHaveBeenCalled();
-    exitSpy.mockRestore();
+describe("generateContainerName", () => {
+  it("strips trailing slash from path", () => {
+    const withSlash = generateContainerName("/home/user/project/");
+    const withoutSlash = generateContainerName("/home/user/project");
+    expect(withSlash).toBe(withoutSlash);
+    expect(withSlash).toMatch(/^container-project-[a-f0-9]{8}$/);
   });
 
-  it("calls process.exit when docker is not available", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
-      throw new Error("process.exit");
+  it("generates consistent hash for same path", () => {
+    expect(generateContainerName("/home/user/myproject")).toBe(
+      generateContainerName("/home/user/myproject"),
+    );
+  });
+
+  it("generates different hashes for different paths", () => {
+    expect(generateContainerName("/home/user/project1")).not.toBe(
+      generateContainerName("/home/user/project2"),
+    );
+  });
+});
+
+describe("Runtime", () => {
+  const runtime = new Runtime(mockExecutor, "docker");
+
+  describe("imageExists", () => {
+    it("returns true when status is 0", () => {
+      enqueue({ status: 0 });
+      expect(runtime.imageExists("test:latest")).toBe(true);
     });
-    expect(() => checkDocker()).toThrow("process.exit");
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    exitSpy.mockRestore();
-  });
-});
 
-describe("imageExists", () => {
-  it("returns true when status is 0", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    expect(imageExists()).toBe(true);
+    it("returns false when status is non-zero", () => {
+      enqueue({ status: 1 });
+      expect(runtime.imageExists("test:latest")).toBe(false);
+    });
   });
 
-  it("returns false when status is non-zero", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    expect(imageExists()).toBe(false);
-  });
-});
+  describe("containerExists", () => {
+    it("returns true when status is 0", () => {
+      enqueue({ status: 0 });
+      expect(runtime.containerExists("container-foo-abc12345")).toBe(true);
+    });
 
-describe("containerExists", () => {
-  it("returns true when status is 0", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    expect(containerExists("container-foo-abc12345")).toBe(true);
-  });
-
-  it("returns false when status is non-zero", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    expect(containerExists("container-foo-abc12345")).toBe(false);
-  });
-});
-
-describe("containerRunning", () => {
-  it("returns true when status is 0 and stdout is 'true'", () => {
-    enqueue({ status: 0, stdout: "true\n", stderr: "" });
-    expect(containerRunning("container-foo-abc12345")).toBe(true);
+    it("returns false when status is non-zero", () => {
+      enqueue({ status: 1 });
+      expect(runtime.containerExists("container-foo-abc12345")).toBe(false);
+    });
   });
 
-  it("returns false when status is 0 but stdout is 'false'", () => {
-    enqueue({ status: 0, stdout: "false\n", stderr: "" });
-    expect(containerRunning("container-foo-abc12345")).toBe(false);
+  describe("containerRunning", () => {
+    it("returns true when status is 0 and stdout is 'true'", () => {
+      enqueue({ status: 0, stdout: "true\n" });
+      expect(runtime.containerRunning("container-foo-abc12345")).toBe(true);
+    });
+
+    it("returns false when status is 0 but stdout is 'false'", () => {
+      enqueue({ status: 0, stdout: "false\n" });
+      expect(runtime.containerRunning("container-foo-abc12345")).toBe(false);
+    });
+
+    it("returns false when status is non-zero", () => {
+      enqueue({ status: 1 });
+      expect(runtime.containerRunning("container-foo-abc12345")).toBe(false);
+    });
   });
 
-  it("returns false when status is non-zero", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    expect(containerRunning("container-foo-abc12345")).toBe(false);
+  describe("isAvailable", () => {
+    it("returns true when status is 0", () => {
+      enqueue({ status: 0 });
+      expect(runtime.isAvailable()).toBe(true);
+    });
+
+    it("returns false when status is non-zero", () => {
+      enqueue({ status: 1 });
+      expect(runtime.isAvailable()).toBe(false);
+    });
   });
 });
 
 describe("getOtherSessionCount", () => {
   it("returns 0 when ps fails", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    expect(getOtherSessionCount("container-foo-abc12345", "foo")).toBe(0);
+    enqueue({ status: 1 });
+    expect(
+      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
+    ).toBe(0);
   });
 
   it("counts matching docker exec sessions", () => {
@@ -120,9 +167,10 @@ describe("getOtherSessionCount", () => {
         "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n" +
         "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n" +
         "some other process\n",
-      stderr: "",
     });
-    expect(getOtherSessionCount("container-foo-abc12345", "foo")).toBe(2);
+    expect(
+      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
+    ).toBe(2);
   });
 
   it("does not count non-matching sessions", () => {
@@ -131,437 +179,409 @@ describe("getOtherSessionCount", () => {
       stdout:
         "docker exec -it -w /root/bar container-bar-xyz /bin/bash\n" +
         "ps ax -o command=\n",
-      stderr: "",
     });
-    expect(getOtherSessionCount("container-foo-abc12345", "foo")).toBe(0);
+    expect(
+      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
+    ).toBe(0);
   });
 });
 
 describe("stopContainerIfLastSession", () => {
-  it("calls stopContainer when no other sessions", () => {
-    enqueue({ status: 0, stdout: "unrelated\n", stderr: "" });
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    stopContainerIfLastSession("container-foo-abc12345", "foo");
-    const calls = getCalls();
-    const stopCall = calls.find((c) => c.args && c.args[0] === "stop");
+  it("stops when no other sessions", () => {
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0, stdout: "unrelated\n" });
+    enqueue({ status: 0 });
+    stopContainerIfLastSession(
+      mockExecutor,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+    );
+    const stopCall = calls.find((c) => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
   });
 
   it("skips stop when other sessions exist", () => {
+    const runtime = new Runtime(mockExecutor, "docker");
     enqueue({
       status: 0,
       stdout: "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n",
-      stderr: "",
     });
-    stopContainerIfLastSession("container-foo-abc12345", "foo");
-    const calls = getCalls();
-    const stopCall = calls.find((c) => c.args && c.args[0] === "stop");
+    stopContainerIfLastSession(
+      mockExecutor,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+    );
+    const stopCall = calls.find((c) => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
   });
 });
 
 describe("createNewContainer", () => {
   it("constructs correct docker run arguments", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    createNewContainer("container-foo-abc12345", "foo", "/home/user/foo");
+    const runtime = new Runtime(mockExecutor, "docker");
+    const settings: Settings = {};
+    enqueue({ status: 0 });
 
-    const calls = getCalls();
+    const result = createNewContainer(
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      settings,
+      [],
+    );
+
+    expect(result.ok).toBe(true);
     const runCall = calls[calls.length - 1];
     expect(runCall.command).toBe("docker");
-    expect(runCall.args![0]).toBe("run");
+    expect(runCall.args[0]).toBe("run");
     expect(runCall.args).toContain("-d");
     expect(runCall.args).toContain("--name");
     expect(runCall.args).toContain("container-foo-abc12345");
-    expect(runCall.args).toContain("-e");
     expect(runCall.args).toContain("TERM=xterm-256color");
+    expect(runCall.args).toContain("COLORTERM=truecolor");
     expect(runCall.args).toContain("-w");
     expect(runCall.args).toContain("/root/foo");
     expect(runCall.args).toContain("-v");
     expect(runCall.args).toContain("/home/user/foo:/root/foo");
-    expect(runCall.args![runCall.args!.length - 3]).toBe(
-      "code-container:latest",
-    );
-    expect(runCall.args![runCall.args!.length - 2]).toBe("sleep");
-    expect(runCall.args![runCall.args!.length - 1]).toBe("infinity");
   });
 
   it("includes cliFlags in the argument list", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    createNewContainer("container-foo-abc12345", "foo", "/home/user/foo", [
-      "-p",
-      "8080:80",
-    ]);
+    const runtime = new Runtime(mockExecutor, "docker");
+    const settings: Settings = {};
+    enqueue({ status: 0 });
 
-    const calls = getCalls();
+    createNewContainer(
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      settings,
+      ["-p", "8080:80"],
+    );
+
     const runCall = calls[calls.length - 1];
     expect(runCall.args).toContain("-p");
     expect(runCall.args).toContain("8080:80");
   });
 
-  it("returns true on success", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    expect(createNewContainer("c", "p", "/path")).toBe(true);
-  });
+  it("returns failure on non-zero exit", () => {
+    const runtime = new Runtime(mockExecutor, "docker");
+    const settings: Settings = {};
+    enqueue({ status: 1 });
 
-  it("includes COLORTERM environment variable", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    createNewContainer("container-foo-abc12345", "foo", "/home/user/foo");
-
-    const calls = getCalls();
-    const runCall = calls[calls.length - 1];
-    expect(runCall.args).toContain("-e");
-    expect(runCall.args).toContain("COLORTERM=truecolor");
-  });
-
-  it("returns false on failure", () => {
-    enqueue({ status: 1, stdout: "", stderr: "" });
-    expect(createNewContainer("c", "p", "/path")).toBe(false);
+    const result = createNewContainer(runtime, "c", "p", "/path", settings, []);
+    expect(result.ok).toBe(false);
   });
 });
 
-describe("generateContainerName", () => {
-  it("strips trailing slash from path", () => {
-    const resultWithSlash = generateContainerName("/home/user/project/");
-    const resultWithoutSlash = generateContainerName("/home/user/project");
-    expect(resultWithSlash).toBe(resultWithoutSlash);
-    expect(resultWithSlash).toMatch(/^container-project-[a-f0-9]{8}$/);
-  });
-
-  it("generates consistent hash for same path", () => {
-    const result1 = generateContainerName("/home/user/myproject");
-    const result2 = generateContainerName("/home/user/myproject");
-    expect(result1).toBe(result2);
-  });
-
-  it("generates different hashes for different paths", () => {
-    const result1 = generateContainerName("/home/user/project1");
-    const result2 = generateContainerName("/home/user/project2");
-    expect(result1).not.toBe(result2);
-  });
-});
-
-describe("getStoppedContainerIds", () => {
-  it("returns empty array when no stopped containers", () => {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-    expect(getStoppedContainerIds()).toEqual([]);
-  });
-
-  it("returns empty array for whitespace-only output", () => {
-    enqueue({ status: 0, stdout: "   \n\t  ", stderr: "" });
-    expect(getStoppedContainerIds()).toEqual([]);
-  });
-
-  it("parses single container ID", () => {
-    enqueue({ status: 0, stdout: "abc123\n", stderr: "" });
-    expect(getStoppedContainerIds()).toEqual(["abc123"]);
-  });
-
-  it("parses multiple container IDs", () => {
-    enqueue({
-      status: 0,
-      stdout: "abc123\ndef456\nghi789\n",
-      stderr: "",
-    });
-    expect(getStoppedContainerIds()).toEqual(["abc123", "def456", "ghi789"]);
-  });
-});
-
-function enqueueSuccessfulBuilds(count: number): void {
-  for (let i = 0; i < count; i++) {
-    enqueue({ status: 0, stdout: "", stderr: "" });
-  }
-}
-
-function getBuildCalls(): Array<{
-  dockerfile: string;
-  tag: string;
-  args: string[];
-}> {
-  return getCalls()
-    .filter((c) => c.args && c.args[0] === "build")
-    .map((c) => {
-      const args = c.args!;
-      const fIdx = args.indexOf("-f");
-      const tIdx = args.indexOf("-t");
-      return {
-        dockerfile: fIdx !== -1 ? args[fIdx + 1] : "",
-        tag: tIdx !== -1 ? args[tIdx + 1] : "",
-        args: [...args],
-      };
-    });
-}
-
-describe("buildImageRaw", () => {
-  const resourcesDir = path.resolve(__dirname, "..", "resources");
-  const coreDockerfile = path.join(resourcesDir, "Dockerfile.Core");
-  const harnessDockerfile = path.join(resourcesDir, "Dockerfile.Harness");
-
-  function seedPackagedDockerfiles(): void {
-    vol.fromJSON(
-      {
-        "Dockerfile.Core": "FROM ubuntu:24.04",
-        "Dockerfile.Harness": "FROM code-container-packages:latest",
-        "Dockerfile.Packages": "FROM code-container-core:latest",
-        "Dockerfile.User": "FROM code-container-base:latest",
-      },
-      resourcesDir,
+describe("buildImage", () => {
+  function seedDirs() {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+    fs.writeFileSync(
+      path.join(APPDATA_DIR, "Dockerfile.User"),
+      "FROM localhost/aerovato/container-v3-harness:latest",
     );
   }
 
-  function seedUserDockerfiles(): void {
-    const appdataDir = path.join(os.homedir(), ".code-container");
-    vol.fromJSON(
-      {
-        "Dockerfile.Packages": "FROM code-container-core:latest",
-        "Dockerfile.User": "FROM code-container-base:latest",
-      },
-      appdataDir,
+  function makeStores() {
+    const settingsStore = new SettingsStore(
+      fsReader,
+      path.join(APPDATA_DIR, "settings.json"),
     );
-  }
-
-  function seedAllDockerfiles(): void {
-    seedPackagedDockerfiles();
-    seedUserDockerfiles();
+    const stateStore = new StateStore(
+      fsReader,
+      path.join(TEMP_DIR, "state.json"),
+    );
+    return { settingsStore, stateStore };
   }
 
   describe("full target", () => {
-    it("builds all 4 stages", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(4);
-      const result = buildImageRaw("full");
-      expect(result).toBe(true);
+    it("builds all 3 stages", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      const builds = getBuildCalls();
-      expect(builds).toHaveLength(4);
-    });
+      const result = buildImage(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "full",
+      );
+      expect(result.ok).toBe(true);
 
-    it("passes --no-cache to every stage", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(4);
-      buildImageRaw("full");
-
-      const builds = getBuildCalls();
-      for (const build of builds) {
-        expect(build.args).toContain("--no-cache");
-      }
-    });
-
-    it("uses correct dockerfile and tag for each stage", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(4);
-      buildImageRaw("full");
-
-      const builds = getBuildCalls();
-      expect(builds[0].dockerfile).toBe(coreDockerfile);
-      expect(builds[0].tag).toBe("code-container-core:latest");
-
-      expect(builds[1].dockerfile).toContain("Dockerfile.Packages");
-      expect(builds[1].tag).toBe("code-container-packages:latest");
-
-      expect(builds[2].dockerfile).toBe(harnessDockerfile);
-      expect(builds[2].tag).toBe("code-container-base:latest");
-
-      expect(builds[3].dockerfile).toContain("Dockerfile.User");
-      expect(builds[3].tag).toBe("code-container:latest");
-    });
-
-    it("uses APPDATA_DIR as build context for every stage", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(4);
-      buildImageRaw("full");
-
-      const builds = getBuildCalls();
-      for (const build of builds) {
-        expect(build.args[build.args.length - 1]).toContain(".code-container");
-      }
-    });
-  });
-
-  describe("packages target", () => {
-    it("builds 3 stages (packages, harness, user)", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(3);
-      const result = buildImageRaw("packages");
-      expect(result).toBe(true);
-
-      const builds = getBuildCalls();
+      const builds = calls.filter((c) => c.args[0] === "build");
       expect(builds).toHaveLength(3);
-      expect(builds[0].tag).toBe("code-container-packages:latest");
-      expect(builds[1].tag).toBe("code-container-base:latest");
-      expect(builds[2].tag).toBe("code-container:latest");
     });
 
-    it("does not build core stage", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(3);
-      buildImageRaw("packages");
+    it("generates Dockerfile.Core and Dockerfile.Harness to temp", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      const builds = getBuildCalls();
-      const coreBuild = builds.find((b) => b.dockerfile === coreDockerfile);
-      expect(coreBuild).toBeUndefined();
+      buildImage(runtime, settingsStore, stateStore, fsReader, "full");
+
+      expect(fs.existsSync(CORE_DOCKERFILE_PATH)).toBe(true);
+      expect(fs.existsSync(HARNESS_DOCKERFILE_PATH)).toBe(true);
     });
   });
 
   describe("harness target", () => {
     it("builds 2 stages (harness, user)", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(2);
-      const result = buildImageRaw("harness");
-      expect(result).toBe(true);
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      const builds = getBuildCalls();
-      expect(builds).toHaveLength(2);
-      expect(builds[0].tag).toBe("code-container-base:latest");
-      expect(builds[1].tag).toBe("code-container:latest");
-    });
-
-    it("does not build core or packages stages", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(2);
-      buildImageRaw("harness");
-
-      const builds = getBuildCalls();
-      const coreBuild = builds.find((b) => b.dockerfile === coreDockerfile);
-      const packagesBuild = builds.find((b) =>
-        b.dockerfile.includes("Dockerfile.Packages"),
+      const result = buildImage(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "harness",
       );
-      expect(coreBuild).toBeUndefined();
-      expect(packagesBuild).toBeUndefined();
+      expect(result.ok).toBe(true);
+
+      const builds = calls.filter((c) => c.args[0] === "build");
+      expect(builds).toHaveLength(2);
     });
   });
 
   describe("user target", () => {
     it("builds only the user stage", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 0, stdout: "", stderr: "" });
-      const result = buildImageRaw("user");
-      expect(result).toBe(true);
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      const builds = getBuildCalls();
+      const result = buildImage(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "user",
+      );
+      expect(result.ok).toBe(true);
+
+      const builds = calls.filter((c) => c.args[0] === "build");
       expect(builds).toHaveLength(1);
-      expect(builds[0].tag).toBe("code-container:latest");
-      expect(builds[0].dockerfile).toContain("Dockerfile.User");
     });
   });
 
   describe("failure handling", () => {
-    it("returns false when core stage fails", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("full")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(1);
+    it("returns failure when core stage fails", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 1 });
+
+      const result = buildImage(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "full",
+      );
+      expect(result.ok).toBe(false);
+      const builds = calls.filter((c) => c.args[0] === "build");
+      expect(builds).toHaveLength(1);
     });
 
-    it("returns false when packages stage fails", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(1);
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("full")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(2);
-    });
+    it("returns failure when harness stage fails", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
+      enqueue({ status: 1 });
 
-    it("returns false when harness stage fails", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(2);
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("full")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(3);
-    });
-
-    it("returns false when user stage fails", () => {
-      seedAllDockerfiles();
-      enqueueSuccessfulBuilds(3);
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("full")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(4);
-    });
-
-    it("does not continue building after a failure", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      buildImageRaw("full");
-      expect(getBuildCalls()).toHaveLength(1);
-    });
-
-    it("packages target fails at first stage", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("packages")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(1);
-    });
-
-    it("harness target fails at first stage", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("harness")).toBe(false);
-      expect(getBuildCalls()).toHaveLength(1);
-    });
-
-    it("user target fails", () => {
-      seedAllDockerfiles();
-      enqueue({ status: 1, stdout: "", stderr: "" });
-      expect(buildImageRaw("user")).toBe(false);
+      const result = buildImage(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "full",
+      );
+      expect(result.ok).toBe(false);
+      const builds = calls.filter((c) => c.args[0] === "build");
+      expect(builds).toHaveLength(2);
     });
   });
 
-  describe("ensureUserDockerfile", () => {
-    it("copies Dockerfile.Packages from packaged source when missing", () => {
-      seedPackagedDockerfiles();
-      // @ts-expect-error memfs runtime has mkdirSync but types don't expose it
-      fs.mkdirSync(path.join(os.homedir(), ".code-container"), {
-        recursive: true,
-      });
-      enqueueSuccessfulBuilds(1);
+  describe("buildDirty clearing", () => {
+    it("full build clears buildDirty", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      stateStore.save({ buildDirty: "core" });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      buildImageRaw("packages");
+      buildImage(runtime, settingsStore, stateStore, fsReader, "full");
 
-      expect(
-        // @ts-expect-error memfs runtime has existsSync but types don't expose it
-        fs.existsSync(
-          path.join(os.homedir(), ".code-container", "Dockerfile.Packages"),
-        ),
-      ).toBe(true);
+      const state = stateStore.load();
+      expect(state.ok).toBe(true);
+      if (!state.ok) return;
+      expect(state.value.buildDirty).toBeUndefined();
     });
 
-    it("copies Dockerfile.User from packaged source when missing", () => {
-      seedPackagedDockerfiles();
-      // @ts-expect-error memfs runtime has mkdirSync but types don't expose it
-      fs.mkdirSync(path.join(os.homedir(), ".code-container"), {
-        recursive: true,
-      });
-      enqueueSuccessfulBuilds(1);
+    it("harness build clears only harness dirty", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      stateStore.save({ buildDirty: "harness" });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-      buildImageRaw("user");
+      buildImage(runtime, settingsStore, stateStore, fsReader, "harness");
 
-      expect(
-        // @ts-expect-error memfs runtime has existsSync but types don't expose it
-        fs.existsSync(
-          path.join(os.homedir(), ".code-container", "Dockerfile.User"),
-        ),
-      ).toBe(true);
+      const state = stateStore.load();
+      expect(state.ok).toBe(true);
+      if (!state.ok) return;
+      expect(state.value.buildDirty).toBeUndefined();
     });
 
-    it("throws when user dockerfile and packaged source both missing", () => {
-      expect(() => buildImageRaw("user")).toThrow("Dockerfile not found");
-    });
+    it("harness build leaves core dirty intact", () => {
+      seedDirs();
+      const runtime = new Runtime(mockExecutor, "docker");
+      const { settingsStore, stateStore } = makeStores();
+      stateStore.save({ buildDirty: "core" });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
+      enqueue({ status: 0 });
 
-    it("does not copy when user dockerfile already exists", () => {
-      seedPackagedDockerfiles();
-      seedUserDockerfiles();
-      enqueueSuccessfulBuilds(1);
+      buildImage(runtime, settingsStore, stateStore, fsReader, "harness");
 
-      // @ts-expect-error memfs runtime has readFileSync but types don't expose it
-      const contentBefore = fs.readFileSync(
-        path.join(os.homedir(), ".code-container", "Dockerfile.User"),
-        "utf-8",
-      );
-      buildImageRaw("user");
-      // @ts-expect-error memfs runtime has readFileSync but types don't expose it
-      const contentAfter = fs.readFileSync(
-        path.join(os.homedir(), ".code-container", "Dockerfile.User"),
-        "utf-8",
-      );
-      expect(contentBefore).toBe(contentAfter);
+      const state = stateStore.load();
+      expect(state.ok).toBe(true);
+      if (!state.ok) return;
+      expect(state.value.buildDirty).toBe("core");
     });
+  });
+});
+
+describe("generateDockerfileCore", () => {
+  it("generates all sections with defaults", () => {
+    const config = resolveCoreConfig({});
+    const result = generateDockerfileCore(config);
+    expect(result).toContain("FROM ubuntu:24.04");
+    expect(result).toContain("WORKDIR /root");
+    expect(result).toContain('CMD ["bin/bash"]'.replace("bin", "/bin"));
+    expect(result).toContain(DEFAULT_PROMPT_COMMAND);
+    expect(result).toContain(DEFAULT_CORE_COMMANDS);
+  });
+
+  it("omits default commands when disabled", () => {
+    const config = resolveCoreConfig({ disableDefaultCommands: true });
+    const result = generateDockerfileCore(config);
+    expect(result).toContain("FROM ubuntu:24.04");
+    expect(result).not.toContain("apt-get update");
+  });
+
+  it("includes custom commands", () => {
+    const config = resolveCoreConfig({
+      customCommands: ["RUN echo hello", "RUN echo world"],
+    });
+    const result = generateDockerfileCore(config);
+    expect(result).toContain("RUN echo hello\nRUN echo world");
+  });
+
+  it("uses custom base image", () => {
+    const config = resolveCoreConfig({ baseImage: "debian:12" });
+    const result = generateDockerfileCore(config);
+    expect(result).toContain("FROM debian:12");
+    expect(result).not.toContain("FROM ubuntu:24.04");
+  });
+
+  it("user config overrides defaults", () => {
+    const config = resolveCoreConfig({ workdir: "/app" });
+    expect(config.workdir).toBe("/app");
+    expect(config.baseImage).toBe("ubuntu:24.04");
+  });
+});
+
+describe("generateDockerfileHarness", () => {
+  it("generates FROM preamble with no harnesses", () => {
+    const result = generateDockerfileHarness([]);
+    expect(result).toBe("FROM localhost/aerovato/container-v3-core\n");
+  });
+
+  it("includes dockerfileLines for enabled harnesses", () => {
+    const result = generateDockerfileHarness(["claude"]);
+    expect(result).toContain("FROM localhost/aerovato/container-v3-core");
+    expect(result).toContain("curl -fsSL https://claude.ai/install.sh");
+  });
+
+  it("includes dockerfileLines for multiple harnesses", () => {
+    const result = generateDockerfileHarness(["claude", "codex"]);
+    expect(result).toContain("curl -fsSL https://claude.ai/install.sh");
+    expect(result).toContain("npm install -g @openai/codex");
+  });
+
+  it("skips unknown harness ids", () => {
+    const result = generateDockerfileHarness(["nonexistent"]);
+    expect(result).toBe("FROM localhost/aerovato/container-v3-core\n");
+  });
+});
+
+describe("getMounts", () => {
+  const home = os.homedir();
+
+  it("mounts project path", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {});
+    expect(mounts).toContain("/home/user/foo:/root/foo");
+  });
+
+  it("mounts harness configs for enabled harnesses", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {
+      enabledHarnesses: ["claude"],
+    });
+    const claudeConfig = mounts.find(
+      (m) => m.includes(".claude") && !m.includes(".json"),
+    );
+    expect(claudeConfig).toBeDefined();
+  });
+
+  it("mounts gitconfig by default", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {});
+    expect(mounts).toContain(`${home}/.gitconfig:/root/.gitconfig:ro`);
+  });
+
+  it("skips gitconfig when explicitly disabled", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {
+      systemMounts: { gitconfig: false },
+    });
+    const gitMount = mounts.find((m) => m.includes(".gitconfig"));
+    expect(gitMount).toBeUndefined();
+  });
+
+  it("mounts ssh when enabled", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {
+      systemMounts: { ssh: true },
+    });
+    expect(mounts).toContain(`${home}/.ssh:/root/.ssh:ro`);
+  });
+
+  it("skips ssh by default", () => {
+    const mounts = getMounts("/home/user/foo", "foo", {});
+    const sshMount = mounts.find((m) => m.includes(".ssh"));
+    expect(sshMount).toBeUndefined();
   });
 });

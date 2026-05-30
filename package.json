@@ -39,7 +39,7 @@
     "@types/node": "^20.19.37",
     "eslint": "^10.3.0",
     "husky": "^9.1.7",
-    "memfs": "^4.57.2",
+    "memfs": "^4.57.3",
     "prettier": "^3.8.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.1",
