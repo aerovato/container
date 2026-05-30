@@ -1,6 +1,6 @@
 import path from "path";
 import { printInfo, printSuccess, printWarning, printError } from "../utils";
-import clack from "@clack/prompts";
+import * as clack from "@clack/prompts";
 import { Runtime, Executor } from "../runtime";
 import { SettingsStore, StateStore, FsReader } from "../config";
 import { generateContainerName, buildImage, CONTAINER_IMAGE } from "../docker";

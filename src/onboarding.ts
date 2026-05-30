@@ -1,6 +1,6 @@
 import os from "os";
 import path from "path";
-import clack from "@clack/prompts";
+import * as clack from "@clack/prompts";
 import { FsReader, CONFIGS_DIR } from "./config";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
