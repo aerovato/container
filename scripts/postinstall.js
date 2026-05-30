@@ -35,7 +35,6 @@ function writeSettings(settings) {
   });
 }
 
-
 function moveIfExists(src, destDir) {
   if (fs.existsSync(src)) {
     if (!fs.existsSync(destDir)) {
@@ -112,8 +111,6 @@ function setup() {
 
 // --- Main ---
 function main() {
-  setup();
-
   const settings = readSettings();
   const currentVersion = settings.migrationVersion || 0;
 
@@ -128,6 +125,8 @@ function main() {
     settings.migrationVersion = CURRENT_MIGRATION_VERSION;
     writeSettings(settings);
   }
+
+  setup();
 }
 
 main();
