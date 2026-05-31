@@ -9,12 +9,25 @@ import {
   execInteractive,
   stopContainerIfLastSession,
 } from "../container";
+import pkg from "../../package.json";
+import { maybeCheckForUpdate } from "../update-check";
 
 interface ResolvedTarget {
   containerName: string;
   projectName: string;
   projectPath: string;
 }
+
+let pendingUpdate: { current: string; latest: string } | null = null;
+
+process.on("beforeExit", () => {
+  if (pendingUpdate) {
+    clack.log.info(
+      `An update is available for \`container\`: ${pendingUpdate.current} → ${pendingUpdate.latest}`,
+    );
+    clack.log.info("Run `npm install -g @aerovato/container` to update");
+  }
+});
 
 export async function runCommand(
   runtime: Runtime,
@@ -35,6 +48,10 @@ export async function runCommand(
   const resolved = resolveTarget(fs, target);
   if (!resolved) process.exit(1);
   const { containerName, projectName, projectPath } = resolved;
+
+  maybeCheckForUpdate(stateStore, pkg.version).then(info => {
+    pendingUpdate = info;
+  });
 
   const dirty = getBuildDirty(stateStore);
   if (dirty) {
