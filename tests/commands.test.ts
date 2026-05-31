@@ -121,7 +121,7 @@ describe("stopCommand", () => {
       throw new Error("process.exit");
     });
     stopCommand(runtime, undefined);
-    const stopCall = calls.find((c) => c.args[0] === "stop");
+    const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
     expect(exitSpy).not.toHaveBeenCalled();
     exitSpy.mockRestore();
@@ -136,7 +136,7 @@ describe("stopCommand", () => {
       throw new Error("process.exit");
     });
     stopCommand(runtime, undefined);
-    const stopCall = calls.find((c) => c.args[0] === "stop");
+    const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
     exitSpy.mockRestore();
   });
@@ -163,8 +163,8 @@ describe("removeCommand", () => {
     enqueue({ status: 0 });
 
     removeCommand(runtime, undefined);
-    const stopCall = calls.find((c) => c.args[0] === "stop");
-    const rmCall = calls.find((c) => c.args[0] === "rm");
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    const rmCall = calls.find(c => c.args[0] === "rm");
     expect(stopCall).toBeDefined();
     expect(rmCall).toBeDefined();
   });
@@ -176,8 +176,8 @@ describe("removeCommand", () => {
     enqueue({ status: 0 });
 
     removeCommand(runtime, undefined);
-    const stopCall = calls.find((c) => c.args[0] === "stop");
-    const rmCall = calls.find((c) => c.args[0] === "rm");
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    const rmCall = calls.find(c => c.args[0] === "rm");
     expect(stopCall).toBeUndefined();
     expect(rmCall).toBeDefined();
   });
@@ -189,7 +189,7 @@ describe("listCommand", () => {
     enqueue({ status: 0 });
 
     listCommand(runtime);
-    const listCall = calls.find((c) => c.args[0] === "ps");
+    const listCall = calls.find(c => c.args[0] === "ps");
     expect(listCall).toBeDefined();
   });
 });

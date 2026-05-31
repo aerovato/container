@@ -164,9 +164,9 @@ describe("getOtherSessionCount", () => {
     enqueue({
       status: 0,
       stdout:
-        "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n" +
-        "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n" +
-        "some other process\n",
+        "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n"
+        + "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n"
+        + "some other process\n",
     });
     expect(
       getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
@@ -177,8 +177,8 @@ describe("getOtherSessionCount", () => {
     enqueue({
       status: 0,
       stdout:
-        "docker exec -it -w /root/bar container-bar-xyz /bin/bash\n" +
-        "ps ax -o command=\n",
+        "docker exec -it -w /root/bar container-bar-xyz /bin/bash\n"
+        + "ps ax -o command=\n",
     });
     expect(
       getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
@@ -197,7 +197,7 @@ describe("stopContainerIfLastSession", () => {
       "container-foo-abc12345",
       "foo",
     );
-    const stopCall = calls.find((c) => c.args[0] === "stop");
+    const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
   });
 
@@ -213,7 +213,7 @@ describe("stopContainerIfLastSession", () => {
       "container-foo-abc12345",
       "foo",
     );
-    const stopCall = calls.find((c) => c.args[0] === "stop");
+    const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
   });
 });
@@ -318,7 +318,7 @@ describe("buildImage", () => {
       );
       expect(result.ok).toBe(true);
 
-      const builds = calls.filter((c) => c.args[0] === "build");
+      const builds = calls.filter(c => c.args[0] === "build");
       expect(builds).toHaveLength(3);
     });
 
@@ -356,7 +356,7 @@ describe("buildImage", () => {
       );
       expect(result.ok).toBe(true);
 
-      const builds = calls.filter((c) => c.args[0] === "build");
+      const builds = calls.filter(c => c.args[0] === "build");
       expect(builds).toHaveLength(2);
     });
   });
@@ -378,7 +378,7 @@ describe("buildImage", () => {
       );
       expect(result.ok).toBe(true);
 
-      const builds = calls.filter((c) => c.args[0] === "build");
+      const builds = calls.filter(c => c.args[0] === "build");
       expect(builds).toHaveLength(1);
     });
   });
@@ -398,7 +398,7 @@ describe("buildImage", () => {
         "full",
       );
       expect(result.ok).toBe(false);
-      const builds = calls.filter((c) => c.args[0] === "build");
+      const builds = calls.filter(c => c.args[0] === "build");
       expect(builds).toHaveLength(1);
     });
 
@@ -417,7 +417,7 @@ describe("buildImage", () => {
         "full",
       );
       expect(result.ok).toBe(false);
-      const builds = calls.filter((c) => c.args[0] === "build");
+      const builds = calls.filter(c => c.args[0] === "build");
       expect(builds).toHaveLength(2);
     });
   });
@@ -554,7 +554,7 @@ describe("getMounts", () => {
       enabledHarnesses: ["claude"],
     });
     const claudeConfig = mounts.find(
-      (m) => m.includes(".claude") && !m.includes(".json"),
+      m => m.includes(".claude") && !m.includes(".json"),
     );
     expect(claudeConfig).toBeDefined();
   });
@@ -568,7 +568,7 @@ describe("getMounts", () => {
     const mounts = getMounts("/home/user/foo", "foo", {
       systemMounts: { gitconfig: false },
     });
-    const gitMount = mounts.find((m) => m.includes(".gitconfig"));
+    const gitMount = mounts.find(m => m.includes(".gitconfig"));
     expect(gitMount).toBeUndefined();
   });
 
@@ -581,7 +581,7 @@ describe("getMounts", () => {
 
   it("skips ssh by default", () => {
     const mounts = getMounts("/home/user/foo", "foo", {});
-    const sshMount = mounts.find((m) => m.includes(".ssh"));
+    const sshMount = mounts.find(m => m.includes(".ssh"));
     expect(sshMount).toBeUndefined();
   });
 });
