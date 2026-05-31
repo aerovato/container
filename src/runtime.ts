@@ -7,15 +7,14 @@ export interface SpawnSyncResult {
 }
 
 export interface Executor {
-  spawnSync(
-    bin: string,
-    args: string[],
-    options?: object,
-  ): SpawnSyncResult;
+  spawnSync(bin: string, args: string[], options?: object): SpawnSyncResult;
 }
 
 export class Runtime {
-  constructor(private executor: Executor, private bin: RuntimeBin) {}
+  constructor(
+    private executor: Executor,
+    private bin: RuntimeBin,
+  ) {}
 
   imageExists(name: string): boolean {
     const result = this.executor.spawnSync(

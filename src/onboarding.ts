@@ -140,7 +140,7 @@ async function selectHarnessesInteractive(
 
   const selectedIds = await clack.multiselect({
     message: "Select harnesses to install",
-    options: allIds.map((id) => {
+    options: allIds.map(id => {
       const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
       return {
         value: id,
@@ -163,7 +163,7 @@ async function migrateConfigsInteractive(
   harnessIds: string[],
 ): Promise<void> {
   const options = harnessIds
-    .map((id) => {
+    .map(id => {
       const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
       if (!pack) return null;
 
@@ -178,7 +178,7 @@ async function migrateConfigsInteractive(
 
       return { value: id, label: pack.name, hint: status };
     })
-    .filter((o) => o !== null);
+    .filter(o => o !== null);
 
   const selection = await clack.multiselect({
     message: "Select harness configs to migrate",

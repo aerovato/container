@@ -53,7 +53,7 @@ Examples:
 }
 
 function fatal(msg: string[]): never {
-  msg.forEach((m) => clack.log.error(m));
+  msg.forEach(m => clack.log.error(m));
   process.exit(1);
 }
 

@@ -1,0 +1,6 @@
+{
+  "arrowParens": "avoid",
+  "experimentalOperatorPosition": "start",
+  "singleAttributePerLine": false,
+  "trailingComma": "all"
+}
