@@ -109,7 +109,7 @@ Key settings include:
 - `dockerRunFlags` / `dockerExecFlags`
 - `dockerfileCore` (advanced)
 
-Edit this file directly. Changes to `dockerfileCore` or `enabledHarnesses` will mark the build as stale on next `container` run.
+Edit this file directly. After changing `dockerfileCore` or `enabledHarnesses`, run `container build` to rebuild the image.
 
 ## Common Commands
 
