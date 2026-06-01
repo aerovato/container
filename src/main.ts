@@ -50,7 +50,13 @@ async function main(): Promise<void> {
   let settings = settingsResult.value;
 
   if (parsed.command === "init" || needsOnboarding(settings)) {
-    const onboardResult = await runOnboarding(fsReader, executor, settings);
+    const onboardResult = await runOnboarding(
+      fsReader,
+      executor,
+      settings,
+      settingsStore,
+      stateStore,
+    );
     settings = onboardResult.settings;
     settingsStore.save(settings);
     stateStore.save(onboardResult.state);
