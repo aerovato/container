@@ -118,7 +118,7 @@ async function customSetup(
   if (harnessIds.length > 0) {
     await migrateConfigsInteractive(fs, harnessIds);
   }
-  const runtime = await selectRuntimeInteractive(executor);
+  const runtime = await selectRuntimeInteractive(executor, settings.runtime);
   const sshMount = await confirmSSHMount(settings);
 
   clack.note("Onboarding complete.", "Done", { format: line => line });
@@ -164,9 +164,9 @@ async function selectHarnessesInteractive(
       return {
         value: id,
         label: pack.name,
-        selected: currentIds.includes(id),
       };
     }),
+    initialValues: currentIds,
   });
 
   if (clack.isCancel(selectedIds)) {
@@ -258,6 +258,7 @@ async function confirmSSHMount(settings: Settings): Promise<boolean> {
 
 async function selectRuntimeInteractive(
   executor: Executor,
+  previousRuntime?: RuntimeBin,
 ): Promise<RuntimeBin> {
   const { docker, podman } = getRuntimeAvailability(executor);
 
@@ -271,14 +272,15 @@ async function selectRuntimeInteractive(
     message: "Select container runtime",
     options: [
       {
-        value: docker ? "docker" : "docker (Not Installed)",
-        label: "Docker",
+        value: "docker",
+        label: docker ? "Docker" : "Docker (Not Installed)",
       },
       {
-        value: podman ? "podman" : "podman (Not Installed)",
-        label: "Podman",
+        value: "podman",
+        label: podman ? "Podman" : "Podman (Not Installed)",
       },
     ],
+    initialValue: previousRuntime,
   });
 
   if (clack.isCancel(runtime)) {
