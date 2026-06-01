@@ -27,10 +27,9 @@ export async function runOnboarding(
     options: [
       {
         value: "express",
-        label: "Express Setup",
-        hint: "Auto-detect and configure",
+        label: "Express Setup (Auto-detect and configure)",
       },
-      { value: "custom", label: "Custom Setup", hint: "Manual step-by-step" },
+      { value: "custom", label: "Custom Setup (Manual step-by-step setup)" },
     ],
   });
 
@@ -77,7 +76,7 @@ async function expressSetup(
     `Gitconfig Mount: enabled`,
   ].join("\n");
 
-  clack.note(summary, "Configuration Summary");
+  clack.note(summary, "Configuration Summary", { format: line => line });
 
   if (runtime && !runtimeImageExists(executor, runtime)) {
     clack.log.warn(
@@ -113,6 +112,7 @@ async function customSetup(
   clack.note(
     "Onboarding complete. Run 'container build' to build the image.",
     "Done",
+    { format: line => line },
   );
 
   if (!runtimeImageExists(executor, runtime)) {
@@ -139,7 +139,7 @@ async function selectHarnessesInteractive(
   const currentIds = settings.enabledHarnesses ?? [];
 
   const selectedIds = await clack.multiselect({
-    message: "Select harnesses to install",
+    message: "Select harnesses to install (space to select, submit via enter)",
     options: allIds.map(id => {
       const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
       return {
@@ -167,16 +167,16 @@ async function migrateConfigsInteractive(
       const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
       if (!pack) return null;
 
-      let status = "Unmigrated";
+      let status = "(Unmigrated)";
       for (const c of pack.config) {
         const destPath = path.join(CONFIGS_DIR, c.config);
         if (fs.existsSync(destPath)) {
-          status = "Migrated";
+          status = "(Migrated)";
           break;
         }
       }
 
-      return { value: id, label: pack.name, hint: status };
+      return { value: `${id} ${status}`, label: pack.name };
     })
     .filter(o => o !== null);
 
@@ -226,7 +226,7 @@ async function confirmSSHMount(settings: Settings): Promise<boolean> {
   const sshMount = await clack.confirm({
     message:
       "Mount ~/.ssh (read-only)? Enables SSH-based git operations inside containers.",
-    initialValue: settings.systemMounts?.ssh ?? false,
+    initialValue: settings.systemMounts?.ssh ?? true,
   });
 
   if (clack.isCancel(sshMount)) {
@@ -245,20 +245,19 @@ async function selectRuntimeInteractive(
   clack.note(
     "Select the container runtime.\nNote: Podman is recommended on Linux for rootless containers.",
     "Runtime Selection",
+    { format: line => line },
   );
 
   const runtime = await clack.select({
     message: "Select container runtime",
     options: [
       {
-        value: "docker",
+        value: docker ? "docker" : "docker (Not Installed)",
         label: "Docker",
-        hint: docker ? undefined : "Not Installed",
       },
       {
-        value: "podman",
+        value: podman ? "podman" : "podman (Not Installed)",
         label: "Podman",
-        hint: podman ? undefined : "Not Installed",
       },
     ],
   });
