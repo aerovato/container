@@ -520,7 +520,9 @@ describe("generateDockerfileCore", () => {
 describe("generateDockerfileHarness", () => {
   it("generates FROM preamble with no harnesses", () => {
     const result = generateDockerfileHarness([]);
-    expect(result).toBe("FROM localhost/aerovato/container-v3-core\n");
+    expect(result).toBe(
+      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+    );
   });
 
   it("includes dockerfileLines for enabled harnesses", () => {
@@ -537,7 +539,9 @@ describe("generateDockerfileHarness", () => {
 
   it("skips unknown harness ids", () => {
     const result = generateDockerfileHarness(["nonexistent"]);
-    expect(result).toBe("FROM localhost/aerovato/container-v3-core\n");
+    expect(result).toBe(
+      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+    );
   });
 });
 

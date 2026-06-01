@@ -88,7 +88,7 @@ export function buildImage(
   if (!userResult.ok) return userResult;
 
   clearBuildDirty(stateStore, target);
-  runtime.pruneImages(`reference=localhost/aerovato/container-v3-*`);
+  runtime.pruneImages(`label=aerovato.container=v3`);
 
   return { ok: true, value: undefined };
 }
