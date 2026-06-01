@@ -195,7 +195,7 @@ async function migrateConfigsInteractive(
         }
       }
 
-      return { value: `${id} ${status}`, label: pack.name };
+      return { value: id, label: `${pack.name} ${status}` };
     })
     .filter(o => o !== null);
 
