@@ -18,7 +18,8 @@
 1. `container` is available as an NPM package. Install with:
 
    ```bash
-   npm install -g @aerovato/container
+   npm uninstall -g code-container      # Uninstall V2 if present
+   npm install -g @aerovato/container   # Install container V3
    ```
 
 2. Run `container init` (interactive onboarding). It will:
