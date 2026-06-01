@@ -37,7 +37,7 @@ export async function ensureTosAccepted(
     return true;
   }
 
-  clack.note(TOS, "Terms of Service");
+  clack.note(TOS, "Terms of Service", { format: line => line });
 
   const accepted = await clack.confirm({
     message: "Do you accept these terms?",
