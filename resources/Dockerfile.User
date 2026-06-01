@@ -1,3 +1,4 @@
 # User customizations for container
 # Add your RUN, ENV, COPY, etc. directives below.
 FROM localhost/aerovato/container-v3-harness:latest
+LABEL aerovato.container=v3

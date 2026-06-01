@@ -64,6 +64,7 @@ export function generateDockerfileCore(
   const sections: string[] = [];
 
   sections.push(`FROM ${config.baseImage}`);
+  sections.push(`LABEL aerovato.container=v3`);
   sections.push(`WORKDIR ${config.workdir}`);
   sections.push(`CMD ${config.cmd}`);
   sections.push(config.promptCommand);
