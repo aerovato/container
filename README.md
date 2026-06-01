@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/aerovato/container/main/.github/README/banner.png" alt="Banner" />
+  <img src="https://raw.githubusercontent.com/aerovato/container/main/.github/README/banner.jpg" alt="Banner" />
 </p>
 
 #### `container`: Isolated Docker environments for your autonomous coding harnesses.
