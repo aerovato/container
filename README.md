@@ -27,11 +27,7 @@
    - Let you choose Docker or Podman
    - Configure SSH and git mounts
 
-3. Build the image (first build can take 5+ minutes):
-
-   ```bash
-   container build
-   ```
+   Accept the prompt to build the image (first build can take 5+ minutes).
 
 You're done. `container` is ready to use.
 
@@ -62,13 +58,22 @@ npm install <package>        # Persists per container
 
 Your project is mounted at `/root/<project-name>`. Changes persist across sessions. Harness configs are shared across all containers.
 
+---
+
+You may want to periodically rebuild the image to update harnesses and packages:
+
+```bash
+container build               # Trigger full rebuild
+container build harness       # Rebuild harnesses and user packages
+container build user          # Rebuild user packages
+```
+
 ### Common Commands
 
 ```bash
 container                           # Enter container for current directory
 container run /path/to/project      # Enter for a specific project
 container run /path -- -p 8080:80   # Pass extra runtime flags
-container build [full|harness|user] # Build/rebuild image
 container list                      # List all containers
 container stop                      # Stop container
 container remove                    # Remove container

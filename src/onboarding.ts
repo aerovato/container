@@ -1,11 +1,11 @@
 import os from "os";
 import path from "path";
 import * as clack from "@clack/prompts";
-import { FsReader, CONFIGS_DIR } from "./config";
+import { FsReader, CONFIGS_DIR, SettingsStore, StateStore } from "./config";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
-import { CONTAINER_IMAGE } from "./docker";
-import { Executor } from "./runtime";
+import { buildImage } from "./docker";
+import { Executor, Runtime } from "./runtime";
 import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
 
 export const LATEST_ONBOARDING_VERSION = 3;
@@ -19,6 +19,8 @@ export async function runOnboarding(
   fs: FsReader,
   executor: Executor,
   settings: Settings,
+  settingsStore: SettingsStore,
+  stateStore: StateStore,
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Onboarding");
 
@@ -40,8 +42,8 @@ export async function runOnboarding(
 
   const result =
     mode === "express"
-      ? await expressSetup(fs, executor, settings)
-      : await customSetup(fs, executor, settings);
+      ? await expressSetup(fs, executor, settings, settingsStore, stateStore)
+      : await customSetup(fs, executor, settings, settingsStore, stateStore);
 
   result.settings.onboardingVersion = LATEST_ONBOARDING_VERSION;
   return result;
@@ -51,6 +53,8 @@ async function expressSetup(
   fs: FsReader,
   executor: Executor,
   settings: Settings,
+  settingsStore: SettingsStore,
+  stateStore: StateStore,
 ): Promise<{ settings: Settings; state: StateData }> {
   const spinner = clack.spinner();
 
@@ -78,10 +82,16 @@ async function expressSetup(
 
   clack.note(summary, "Configuration Summary", { format: line => line });
 
-  if (runtime && !runtimeImageExists(executor, runtime)) {
-    clack.log.warn(
-      "Image not found. Run 'container build' to build the image.",
-    );
+  if (runtime) {
+    const rt = new Runtime(executor, runtime);
+    clack.log.info(`Building container image (target: full)`);
+    const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
+    if (!buildResult.ok) {
+      clack.log.error("Failed to build image");
+      clack.log.warn("Run 'container build' manually to retry.");
+    } else {
+      clack.log.success("Image built successfully");
+    }
   }
 
   return {
@@ -99,6 +109,8 @@ async function customSetup(
   fs: FsReader,
   executor: Executor,
   settings: Settings,
+  settingsStore: SettingsStore,
+  stateStore: StateStore,
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Custom Setup");
 
@@ -109,16 +121,23 @@ async function customSetup(
   const runtime = await selectRuntimeInteractive(executor);
   const sshMount = await confirmSSHMount(settings);
 
-  clack.note(
-    "Onboarding complete. Run 'container build' to build the image.",
-    "Done",
-    { format: line => line },
-  );
+  clack.note("Onboarding complete.", "Done", { format: line => line });
 
-  if (!runtimeImageExists(executor, runtime)) {
-    clack.log.warn(
-      "Image not found. Run 'container build' to build the image.",
-    );
+  if (runtime) {
+    const shouldBuild = await clack.confirm({
+      message: "Build the container image now? (Recommended)",
+    });
+    if (!clack.isCancel(shouldBuild) && shouldBuild) {
+      const rt = new Runtime(executor, runtime);
+      clack.log.info(`Building container image (target: full)`);
+      const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
+      if (!buildResult.ok) {
+        clack.log.error("Failed to build image");
+        clack.log.warn("Run 'container build' manually to retry.");
+      } else {
+        clack.log.success("Image built successfully");
+      }
+    }
   }
 
   return {
@@ -297,20 +316,6 @@ function detectHarnesses(executor: Executor): string[] {
   }
 
   return detected;
-}
-
-function runtimeImageExists(executor: Executor, runtime: RuntimeBin): boolean {
-  const result = executor.spawnSync(
-    runtime,
-    ["images", "-q", CONTAINER_IMAGE],
-    {
-      stdio: "pipe",
-    },
-  );
-  if (result.status !== 0) {
-    return false;
-  }
-  return result.stdout.toString().trim().length > 0;
 }
 
 function migrateAllConfigs(fs: FsReader, harnessIds: string[]): number {
