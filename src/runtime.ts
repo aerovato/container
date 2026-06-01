@@ -100,7 +100,7 @@ export class Runtime {
   pruneImages(referenceFilter: string): void {
     this.executor.spawnSync(
       this.bin,
-      ["image", "prune", "-a", "--filter", referenceFilter],
+      ["image", "prune", "--force", "--filter", referenceFilter],
       { stdio: "inherit" },
     );
   }
