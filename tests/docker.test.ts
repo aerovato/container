@@ -150,6 +150,18 @@ describe("Runtime", () => {
       expect(runtime.isAvailable()).toBe(false);
     });
   });
+
+  describe("daemonRunning", () => {
+    it("returns true when status is 0", () => {
+      enqueue({ status: 0 });
+      expect(runtime.daemonRunning()).toBe(true);
+    });
+
+    it("returns false when status is non-zero", () => {
+      enqueue({ status: 1 });
+      expect(runtime.daemonRunning()).toBe(false);
+    });
+  });
 });
 
 describe("getOtherSessionCount", () => {
