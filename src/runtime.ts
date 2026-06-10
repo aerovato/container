@@ -111,4 +111,11 @@ export class Runtime {
     });
     return result.status === 0;
   }
+
+  daemonRunning(): boolean {
+    const result = this.executor.spawnSync(this.bin, ["info"], {
+      stdio: "pipe",
+    });
+    return result.status === 0;
+  }
 }

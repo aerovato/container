@@ -81,6 +81,13 @@ async function main(): Promise<void> {
 
   const runtime = new Runtime(executor, settings.runtime);
 
+  if (!runtime.daemonRunning()) {
+    clack.log.error(
+      `${settings.runtime} daemon is not running. Start ${settings.runtime} and try again.`,
+    );
+    process.exit(1);
+  }
+
   switch (parsed.command) {
     case "list":
       listCommand(runtime);
