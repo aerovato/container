@@ -115,4 +115,20 @@ export const HARNESS_PACKS = {
     dockerfileLines: ["RUN npm install -g @aerovato/nitro"],
     config: [{ host: "~/.nitro", config: ".nitro", mount: "/root/.nitro" }],
   },
+  antigravity: {
+    id: "antigravity",
+    name: "Antigravity CLI",
+    detectCommand: "which agy",
+    dockerfileLines: [
+      "RUN curl -fsSL https://antigravity.google/cli/install.sh | bash",
+      "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
+    ],
+    config: [
+      {
+        host: "~/.gemini/antigravity-cli",
+        config: ".gemini/antigravity-cli",
+        mount: "/root/.gemini/antigravity-cli",
+      },
+    ],
+  },
 } as const satisfies Record<string, HarnessPack>;
