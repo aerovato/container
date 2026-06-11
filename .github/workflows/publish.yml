@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -16,12 +16,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VER="${TAG#v}"
+          npm version "$VER" --no-git-tag-version --allow-same-version
+
+      - name: Commit and push
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit --no-verify -m "chore(release): bump to $TAG"
+            git push origin HEAD:main
+            git tag -fa "$TAG" -m "$TAG"
+            git push -f origin "$TAG"
+          else
+            echo "No version changes detected in package files. Skipping commit and push."
+          fi
 
       - run: npm ci
       - run: npm run build
