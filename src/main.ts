@@ -24,6 +24,7 @@ import { runCommand } from "./commands/run";
 import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
+import { settingsCommand } from "./commands/settings";
 import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
 
@@ -94,6 +95,9 @@ async function main(): Promise<void> {
   switch (parsed.command) {
     case "list":
       listCommand(runtime);
+      return;
+    case "settings":
+      await settingsCommand(runtime, settingsStore, stateStore, fsReader);
       return;
     case "build":
       buildCommand(runtime, settingsStore, stateStore, fsReader, parsed.target);
