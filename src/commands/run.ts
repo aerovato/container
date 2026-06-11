@@ -18,17 +18,6 @@ interface ResolvedTarget {
   projectPath: string;
 }
 
-let pendingUpdate: { current: string; latest: string } | null = null;
-
-process.on("beforeExit", () => {
-  if (pendingUpdate) {
-    clack.log.info(
-      `An update is available for \`container\`: ${pendingUpdate.current} → ${pendingUpdate.latest}`,
-    );
-    clack.log.info("Run `npm install -g @aerovato/container` to update");
-  }
-});
-
 export async function runCommand(
   runtime: Runtime,
   executor: Executor,
@@ -49,9 +38,7 @@ export async function runCommand(
   if (!resolved) process.exit(1);
   const { containerName, projectName, projectPath } = resolved;
 
-  maybeCheckForUpdate(stateStore, pkg.version).then(info => {
-    pendingUpdate = info;
-  });
+  const updateInfo = await maybeCheckForUpdate(stateStore, pkg.version);
 
   const dirty = getBuildDirty(stateStore);
   if (dirty) {
@@ -138,6 +125,13 @@ export async function runCommand(
   }
   cleanup();
   clack.log.success("Container session ended");
+
+  if (updateInfo) {
+    clack.log.info(
+      `An update is available for \`container\`: ${updateInfo.current} → ${updateInfo.latest}`,
+    );
+    clack.log.info("Run `npm install -g @aerovato/container` to update");
+  }
 }
 
 function resolveTarget(
