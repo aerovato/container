@@ -7,6 +7,7 @@ export type ParsedArgs =
   | { command: "run"; target: string | undefined; cliFlags: string[] }
   | { command: "build"; target: BuildTarget }
   | { command: "init" }
+  | { command: "settings" }
   | { command: "stop"; target: string | undefined }
   | { command: "remove"; target: string | undefined }
   | { command: "list" };
@@ -44,6 +45,7 @@ Examples:
     container build full                   # Build all stages from scratch
     container build harness                # Rebuild from Harness stage
     container build user                   # Build User stage only
+    container settings                     # Modify settings interactively
     container init                         # Trigger onboarding
     container stop                         # Stop container for current directory
     container remove /path/to/project      # Remove container for specific project
@@ -57,7 +59,15 @@ function fatal(msg: string[]): never {
   process.exit(1);
 }
 
-const VALID_COMMANDS = ["run", "build", "init", "stop", "remove", "list"];
+const VALID_COMMANDS = [
+  "run",
+  "build",
+  "init",
+  "settings",
+  "stop",
+  "remove",
+  "list",
+];
 
 function splitAtSeparator(args: string[]): {
   before: string[];
@@ -99,7 +109,8 @@ export function parseArgs(raw: string[]): ParsedArgs {
       return { command: "build", target: target as BuildTarget };
     }
     case "list":
-    case "init": {
+    case "init":
+    case "settings": {
       if (remaining.length > 0) {
         fatal([`Unexpected argument: ${remaining[0]}`]);
       }

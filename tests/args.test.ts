@@ -161,6 +161,17 @@ describe("parseArgs", () => {
     });
   });
 
+  describe("settings", () => {
+    it("parses settings", () => {
+      expect(parseArgs(["settings"])).toEqual({ command: "settings" });
+    });
+
+    it("rejects extra args", () => {
+      expect(() => parseArgs(["settings", "extra"])).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe("list", () => {
     it("parses list", () => {
       expect(parseArgs(["list"])).toEqual({ command: "list" });

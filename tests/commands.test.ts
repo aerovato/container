@@ -13,6 +13,8 @@ import { buildCommand } from "../src/commands/build";
 import { stopCommand } from "../src/commands/stop";
 import { removeCommand } from "../src/commands/remove";
 import { listCommand } from "../src/commands/list";
+import { settingsCommand } from "../src/commands/settings";
+import * as clack from "@clack/prompts";
 import {
   resolveProjectPath,
   resolveContainerTarget,
@@ -268,5 +270,146 @@ describe("shared helpers", () => {
       expect(getDefaultRuntime(mockExecutor)).toBe("docker");
       Object.defineProperty(process, "platform", { value: original });
     });
+  });
+});
+
+describe("settingsCommand", () => {
+  function setupStores(): {
+    settingsStore: SettingsStore;
+    stateStore: StateStore;
+  } {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+    const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
+    const stateStore = new StateStore(fsReader, STATE_PATH);
+    settingsStore.save({
+      enabledHarnesses: ["opencode"],
+      runtime: "docker",
+      systemMounts: { gitconfig: true, ssh: false },
+    });
+    stateStore.save({});
+    return { settingsStore, stateStore };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("exits immediately when done is selected without changes", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select).mockResolvedValueOnce("done");
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    expect(clack.outro).toHaveBeenCalledWith("Settings saved");
+    const saved = settingsStore.load();
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.enabledHarnesses).toEqual(["opencode"]);
+  });
+
+  it("updates enabledHarnesses and skips rebuild", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("harnesses")
+      .mockResolvedValueOnce("done")
+      .mockResolvedValueOnce("skip");
+    vi.mocked(clack.multiselect).mockResolvedValueOnce(["opencode", "gemini"]);
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const saved = settingsStore.load();
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.enabledHarnesses).toEqual(["gemini", "opencode"]);
+  });
+
+  it("triggers harness rebuild when selected", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("harnesses")
+      .mockResolvedValueOnce("done")
+      .mockResolvedValueOnce("harness");
+    vi.mocked(clack.multiselect).mockResolvedValueOnce(["opencode", "claude"]);
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const buildCalls = calls.filter(c => c.args[0] === "build");
+    expect(buildCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("updates runtime", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("runtime")
+      .mockResolvedValueOnce("podman")
+      .mockResolvedValueOnce("done");
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const saved = settingsStore.load();
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.runtime).toBe("podman");
+  });
+
+  it("updates system mounts", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("mounts")
+      .mockResolvedValueOnce("done");
+    vi.mocked(clack.confirm)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const saved = settingsStore.load();
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.systemMounts).toEqual({ ssh: true, gitconfig: false });
+  });
+
+  it("handles cancel on main menu", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select).mockResolvedValueOnce(Symbol("cancel"));
+    vi.mocked(clack.isCancel).mockReturnValueOnce(true);
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    expect(clack.outro).toHaveBeenCalledWith("Settings saved");
+  });
+
+  it("does not offer rebuild when harnesses unchanged", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("runtime")
+      .mockResolvedValueOnce("docker")
+      .mockResolvedValueOnce("done");
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const selectCalls = vi.mocked(clack.select).mock.calls;
+    const rebuildCall = selectCalls.find(
+      c => typeof c[0] === "object" && c[0]?.message?.includes("Rebuild"),
+    );
+    expect(rebuildCall).toBeUndefined();
   });
 });
