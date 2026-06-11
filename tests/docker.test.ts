@@ -28,6 +28,7 @@ import {
   stopContainerIfLastSession,
   createNewContainer,
   getMounts,
+  stopOrphanedContainers,
 } from "../src/container";
 import { Settings } from "../src/types";
 
@@ -167,9 +168,9 @@ describe("Runtime", () => {
 describe("getOtherSessionCount", () => {
   it("returns 0 when ps fails", () => {
     enqueue({ status: 1 });
-    expect(
-      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
-    ).toBe(0);
+    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
+      0,
+    );
   });
 
   it("counts matching docker exec sessions", () => {
@@ -180,9 +181,9 @@ describe("getOtherSessionCount", () => {
         + "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n"
         + "some other process\n",
     });
-    expect(
-      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
-    ).toBe(2);
+    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
+      2,
+    );
   });
 
   it("does not count non-matching sessions", () => {
@@ -192,9 +193,9 @@ describe("getOtherSessionCount", () => {
         "docker exec -it -w /root/bar container-bar-xyz /bin/bash\n"
         + "ps ax -o command=\n",
     });
-    expect(
-      getOtherSessionCount(mockExecutor, "container-foo-abc12345", "foo"),
-    ).toBe(0);
+    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
+      0,
+    );
   });
 });
 
@@ -203,12 +204,7 @@ describe("stopContainerIfLastSession", () => {
     const runtime = new Runtime(mockExecutor, "docker");
     enqueue({ status: 0, stdout: "unrelated\n" });
     enqueue({ status: 0 });
-    stopContainerIfLastSession(
-      mockExecutor,
-      runtime,
-      "container-foo-abc12345",
-      "foo",
-    );
+    stopContainerIfLastSession(mockExecutor, runtime, "container-foo-abc12345");
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
   });
@@ -219,12 +215,7 @@ describe("stopContainerIfLastSession", () => {
       status: 0,
       stdout: "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n",
     });
-    stopContainerIfLastSession(
-      mockExecutor,
-      runtime,
-      "container-foo-abc12345",
-      "foo",
-    );
+    stopContainerIfLastSession(mockExecutor, runtime, "container-foo-abc12345");
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
   });
@@ -599,5 +590,138 @@ describe("getMounts", () => {
     const mounts = getMounts("/home/user/foo", "foo", {});
     const sshMount = mounts.find(m => m.includes(".ssh"));
     expect(sshMount).toBeUndefined();
+  });
+});
+
+describe("listRunningManagedContainers", () => {
+  const runtime = new Runtime(mockExecutor, "docker");
+
+  it("returns container names from stdout", () => {
+    enqueue({
+      status: 0,
+      stdout: "container-foo-abc12345\ncontainer-bar-def67890\n",
+    });
+    const names = runtime.listRunningManagedContainers();
+    expect(names).toEqual(["container-foo-abc12345", "container-bar-def67890"]);
+  });
+
+  it("returns empty array when ps fails", () => {
+    enqueue({ status: 1 });
+    const names = runtime.listRunningManagedContainers();
+    expect(names).toEqual([]);
+  });
+
+  it("returns empty array for empty output", () => {
+    enqueue({ status: 0, stdout: "" });
+    const names = runtime.listRunningManagedContainers();
+    expect(names).toEqual([]);
+  });
+});
+
+describe("containerStartedAt", () => {
+  const runtime = new Runtime(mockExecutor, "docker");
+
+  it("returns timestamp string when status is 0", () => {
+    enqueue({ status: 0, stdout: "2026-06-11T14:30:00.123456789Z\n" });
+    const result = runtime.containerStartedAt("container-foo-abc12345");
+    expect(result).toBe("2026-06-11T14:30:00.123456789Z");
+  });
+
+  it("returns null when status is non-zero", () => {
+    enqueue({ status: 1 });
+    const result = runtime.containerStartedAt("container-foo-abc12345");
+    expect(result).toBeNull();
+  });
+});
+
+describe("stopOrphanedContainers", () => {
+  const runtime = new Runtime(mockExecutor, "docker");
+  let dateNowSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    dateNowSpy = vi.spyOn(Date, "now");
+  });
+
+  afterEach(() => {
+    dateNowSpy.mockRestore();
+  });
+
+  it("stops orphaned container past threshold with no sessions", () => {
+    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
+
+    enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
+    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
+    enqueue({ status: 0, stdout: "unrelated process\n" });
+    enqueue({ status: 0 });
+
+    stopOrphanedContainers(mockExecutor, runtime);
+
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    expect(stopCall).toBeDefined();
+    expect(stopCall!.args).toContain("container-myproject-abc12345");
+  });
+
+  it("skips container within threshold", () => {
+    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:02:00Z").getTime());
+
+    enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
+    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
+
+    stopOrphanedContainers(mockExecutor, runtime);
+
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    expect(stopCall).toBeUndefined();
+  });
+
+  it("skips container with active sessions", () => {
+    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
+
+    enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
+    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
+    enqueue({
+      status: 0,
+      stdout:
+        "docker exec -it -w /root/myproject container-myproject-abc12345 /bin/bash\n",
+    });
+
+    stopOrphanedContainers(mockExecutor, runtime);
+
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    expect(stopCall).toBeUndefined();
+  });
+
+  it("skips container when startedAt returns null", () => {
+    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
+
+    enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
+    enqueue({ status: 1 });
+
+    stopOrphanedContainers(mockExecutor, runtime);
+
+    const stopCall = calls.find(c => c.args[0] === "stop");
+    expect(stopCall).toBeUndefined();
+  });
+
+  it("processes multiple containers", () => {
+    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
+
+    enqueue({
+      status: 0,
+      stdout: "container-foo-abc12345\ncontainer-bar-def67890\n",
+    });
+    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
+    enqueue({ status: 0, stdout: "unrelated\n" });
+    enqueue({ status: 0 });
+    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
+    enqueue({
+      status: 0,
+      stdout: "docker exec -it -w /root/bar container-bar-def67890 /bin/bash\n",
+    });
+
+    stopOrphanedContainers(mockExecutor, runtime);
+
+    const stopCalls = calls.filter(c => c.args[0] === "stop");
+    expect(stopCalls).toHaveLength(1);
+    expect(stopCalls[0]!.args).toContain("container-foo-abc12345");
   });
 });

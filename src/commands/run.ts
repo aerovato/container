@@ -117,9 +117,26 @@ export async function runCommand(
     runtime.start(containerName);
   }
 
+  let stopped = false;
+
+  const cleanup = (): void => {
+    if (stopped) return;
+    stopped = true;
+    stopContainerIfLastSession(executor, runtime, containerName);
+  };
+
+  const signals: NodeJS.Signals[] = ["SIGINT", "SIGHUP", "SIGTERM"];
+  for (const sig of signals) {
+    process.on(sig, cleanup);
+  }
+
   clack.log.info("Attaching to container...");
   execInteractive(runtime, containerName, projectName, settings, cliFlags);
-  stopContainerIfLastSession(executor, runtime, containerName, projectName);
+
+  for (const sig of signals) {
+    process.removeListener(sig, cleanup);
+  }
+  cleanup();
   clack.log.success("Container session ended");
 }
 

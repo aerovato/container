@@ -89,7 +89,6 @@ export function execInteractive(
 export function getOtherSessionCount(
   executor: Executor,
   containerName: string,
-  projectName: string,
 ): number {
   const result = executor.spawnSync("ps", ["ax", "-o", "command="], {
     encoding: "utf-8",
@@ -104,9 +103,8 @@ export function getOtherSessionCount(
     const hasIt = line.includes("-it");
     const hasContainerName = line.includes(containerName);
     const hasBash = line.includes("/bin/bash");
-    const hasWorkdir = line.includes(`-w /root/${projectName}`);
 
-    if (hasExec && hasIt && hasContainerName && hasBash && hasWorkdir) {
+    if (hasExec && hasIt && hasContainerName && hasBash) {
       count++;
     }
   }
@@ -118,14 +116,29 @@ export function stopContainerIfLastSession(
   executor: Executor,
   runtime: Runtime,
   containerName: string,
-  projectName: string,
 ): void {
-  const otherSessions = getOtherSessionCount(
-    executor,
-    containerName,
-    projectName,
-  );
+  const otherSessions = getOtherSessionCount(executor, containerName);
   if (otherSessions === 0) {
     runtime.stop(containerName);
+  }
+}
+
+const ORPHAN_THRESHOLD_MS = 5 * 60 * 1000;
+
+export function stopOrphanedContainers(
+  executor: Executor,
+  runtime: Runtime,
+): void {
+  const containers = runtime.listRunningManagedContainers();
+  const now = Date.now();
+
+  for (const name of containers) {
+    const startedAt = runtime.containerStartedAt(name);
+    if (startedAt === null) continue;
+
+    const startedMs = new Date(startedAt).getTime();
+    if (now - startedMs < ORPHAN_THRESHOLD_MS) continue;
+
+    stopContainerIfLastSession(executor, runtime, name);
   }
 }

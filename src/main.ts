@@ -25,6 +25,7 @@ import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
 import { getDefaultRuntime } from "./commands/shared";
+import { stopOrphanedContainers } from "./container";
 
 const executor: Executor = { spawnSync };
 
@@ -87,6 +88,8 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
+
+  stopOrphanedContainers(executor, runtime);
 
   switch (parsed.command) {
     case "list":
