@@ -122,7 +122,7 @@ export async function runCommand(
   const cleanup = (): void => {
     if (stopped) return;
     stopped = true;
-    stopContainerIfLastSession(executor, runtime, containerName, projectName);
+    stopContainerIfLastSession(executor, runtime, containerName);
   };
 
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGHUP", "SIGTERM"];

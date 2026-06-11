@@ -97,6 +97,34 @@ export class Runtime {
     );
   }
 
+  listRunningManagedContainers(): string[] {
+    const result = this.executor.spawnSync(
+      this.bin,
+      [
+        "ps",
+        "--filter",
+        "name=container-",
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.Names}}",
+      ],
+      { stdio: "pipe" },
+    );
+    if (result.status !== 0) return [];
+    return result.stdout.toString().trim().split("\n").filter(Boolean);
+  }
+
+  containerStartedAt(name: string): string | null {
+    const result = this.executor.spawnSync(
+      this.bin,
+      ["inspect", "-f", "{{.State.StartedAt}}", name],
+      { stdio: "pipe" },
+    );
+    if (result.status !== 0) return null;
+    return result.stdout.toString().trim();
+  }
+
   pruneImages(referenceFilter: string): void {
     this.executor.spawnSync(
       this.bin,
