@@ -3,10 +3,11 @@ import { Runtime } from "../runtime";
 import { SettingsStore, StateStore, FsReader } from "../config";
 import { RuntimeBin } from "../types";
 import { HARNESS_PACKS } from "../harness-packs";
+import { TOOL_PACKS } from "../tool-packs";
 import { buildImage } from "../docker";
 import { BuildTarget } from "../types";
 
-type SettingsAction = "harnesses" | "runtime" | "mounts" | "done";
+type SettingsAction = "harnesses" | "tools" | "runtime" | "mounts" | "done";
 
 function formatList(items: string[]): string {
   return items.length > 0 ? items.join(", ") : "none";
@@ -26,6 +27,7 @@ export async function settingsCommand(
 
   let settings = result.value;
   const initialHarnesses = [...(settings.enabledHarnesses ?? [])];
+  const initialTools = [...(settings.enabledTools ?? [])];
 
   clack.intro("Settings");
 
@@ -36,6 +38,10 @@ export async function settingsCommand(
         {
           value: "harnesses",
           label: "Enabled Harnesses",
+        },
+        {
+          value: "tools",
+          label: "Enabled Tools",
         },
         {
           value: "runtime",
@@ -74,6 +80,28 @@ export async function settingsCommand(
           };
           settingsStore.save(settings);
           clack.log.success(`Harnesses updated: ${formatList(newHarnesses)}`);
+        }
+        break;
+      }
+      case "tools": {
+        const allToolIds = Object.keys(TOOL_PACKS);
+        const selectedTools = await clack.multiselect({
+          message: "Select tools to enable (space to toggle, enter to confirm)",
+          options: allToolIds.map(id => {
+            const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
+            return { value: id, label: pack.name };
+          }),
+          initialValues: settings.enabledTools ?? [],
+        });
+
+        if (!clack.isCancel(selectedTools)) {
+          const newTools = (selectedTools as string[]).sort();
+          settings = {
+            ...settings,
+            enabledTools: newTools,
+          };
+          settingsStore.save(settings);
+          clack.log.success(`Tools updated: ${formatList(newTools)}`);
         }
         break;
       }
@@ -128,17 +156,29 @@ export async function settingsCommand(
     currentHarnesses.length !== initialSorted.length
     || currentHarnesses.some((v, i) => v !== initialSorted[i]);
 
-  if (harnessesChanged) {
+  const initialToolsSorted = [...initialTools].sort();
+  const currentTools = [...(settings.enabledTools ?? [])].sort();
+  const toolsChanged =
+    currentTools.length !== initialToolsSorted.length
+    || currentTools.some((v, i) => v !== initialToolsSorted[i]);
+
+  if (harnessesChanged || toolsChanged) {
     const rebuildChoice = await clack.select({
-      message: "Harness selection changed. Rebuild the image now?",
+      message: "Configuration changed. Rebuild the image now?",
       options: [
-        { value: "full", label: "Full Rebuild (Core → Harness → User)" },
-        { value: "harness", label: "Harness Rebuild (Harness → User)" },
+        { value: "full", label: "Full Rebuild" },
+        { value: "tools", label: "Tools & Harness Rebuild" },
+        { value: "harness", label: "Harness Rebuild" },
         { value: "skip", label: "Skip (will rebuild on next run)" },
       ],
     });
 
-    if (!clack.isCancel(rebuildChoice) && rebuildChoice !== "skip") {
+    if (clack.isCancel(rebuildChoice) || rebuildChoice === "skip") {
+      const dirtyTarget = toolsChanged ? "tools" : "harness";
+      const stateResult = stateStore.load();
+      const state = stateResult.ok ? stateResult.value : {};
+      stateStore.save({ ...state, buildDirty: dirtyTarget });
+    } else {
       const target = rebuildChoice as BuildTarget;
       clack.log.info(`Building container image (target: ${target})`);
       const buildResult = buildImage(

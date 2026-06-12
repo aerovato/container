@@ -1,9 +1,9 @@
 import { HARNESS_PACKS } from "./harness-packs";
-import { CORE_IMAGE } from "./dockerfile-core";
+import { TOOLS_IMAGE } from "./dockerfile-core";
 
 export function generateDockerfileHarness(enabledIds: string[]): string {
   const sections: string[] = [];
-  sections.push(`FROM ${CORE_IMAGE}`);
+  sections.push(`FROM ${TOOLS_IMAGE}`);
   sections.push(`LABEL aerovato.container=v3`);
 
   for (const id of enabledIds) {

@@ -4,11 +4,12 @@ import * as clack from "@clack/prompts";
 import { FsReader, CONFIGS_DIR, SettingsStore, StateStore } from "./config";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
+import { TOOL_PACKS } from "./tool-packs";
 import { buildImage } from "./docker";
 import { Executor, Runtime } from "./runtime";
 import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
 
-export const LATEST_ONBOARDING_VERSION = 3;
+export const LATEST_ONBOARDING_VERSION = 4;
 
 export function needsOnboarding(settings: Settings): boolean {
   const version = settings.onboardingVersion;
@@ -68,13 +69,25 @@ async function expressSetup(
   const migratedCount = migrateAllConfigs(fs, harnessIds);
   spinner.stop(`Migrated ${migratedCount} config items`);
 
+  spinner.start("Detecting installed tooling");
+  const toolIds = detectTools(executor);
+  if (!toolIds.includes("enhanced-tools")) {
+    toolIds.push("enhanced-tools");
+  }
+  spinner.stop(`Detected ${toolIds.length} tools`);
+
+  spinner.start("Migrating tool configs");
+  const toolMigratedCount = migrateAllToolConfigs(fs, toolIds);
+  spinner.stop(`Migrated ${toolMigratedCount} tool config items`);
+
   spinner.start("Detecting container runtime");
   const runtime = getDefaultRuntime(executor);
   spinner.stop(runtime ? `Runtime: ${runtime}` : "No runtime detected");
 
   const summary = [
     `Enabled Harnesses: ${harnessIds.join(", ") || "none"}`,
-    `Migrated Configs: ${migratedCount}`,
+    `Enabled Tools: ${toolIds.join(", ") || "none"}`,
+    `Migrated Configs: ${migratedCount + toolMigratedCount}`,
     `Runtime: ${runtime || "not detected"}`,
     `SSH Mount: enabled`,
     `Gitconfig Mount: enabled`,
@@ -98,6 +111,7 @@ async function expressSetup(
     settings: {
       ...settings,
       enabledHarnesses: harnessIds,
+      enabledTools: toolIds,
       runtime,
       systemMounts: { gitconfig: true, ssh: true },
     },
@@ -117,6 +131,10 @@ async function customSetup(
   const harnessIds = await selectHarnessesInteractive(settings);
   if (harnessIds.length > 0) {
     await migrateConfigsInteractive(fs, harnessIds);
+  }
+  const toolIds = await selectToolsInteractive(settings);
+  if (toolIds.length > 0) {
+    migrateAllToolConfigs(fs, toolIds);
   }
   const runtime = await selectRuntimeInteractive(executor, settings.runtime);
   const sshMount = await confirmSSHMount(settings);
@@ -144,11 +162,36 @@ async function customSetup(
     settings: {
       ...settings,
       enabledHarnesses: harnessIds,
+      enabledTools: toolIds,
       runtime,
       systemMounts: { gitconfig: true, ssh: sshMount },
     },
     state: { buildDirty: "harness" },
   };
+}
+
+async function selectToolsInteractive(settings: Settings): Promise<string[]> {
+  const allIds = Object.keys(TOOL_PACKS);
+  const currentIds = settings.enabledTools ?? [];
+
+  const selectedIds = await clack.multiselect({
+    message: "Select tools to install (space to select, submit via enter)",
+    options: allIds.map(id => {
+      const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
+      return {
+        value: id,
+        label: pack.name,
+      };
+    }),
+    initialValues: currentIds,
+  });
+
+  if (clack.isCancel(selectedIds)) {
+    clack.cancel("Onboarding cancelled");
+    process.exit(0);
+  }
+
+  return selectedIds as string[];
 }
 
 async function selectHarnessesInteractive(
@@ -320,11 +363,57 @@ function detectHarnesses(executor: Executor): string[] {
   return detected;
 }
 
+export function detectTools(executor: Executor): string[] {
+  const detected: string[] = [];
+
+  for (const [id, pack] of Object.entries(TOOL_PACKS)) {
+    const result = executor.spawnSync(pack.detectCommand, [], {
+      shell: true,
+      stdio: "pipe",
+    });
+    if (result.status === 0) {
+      detected.push(id);
+    }
+  }
+
+  return detected;
+}
+
 function migrateAllConfigs(fs: FsReader, harnessIds: string[]): number {
   let count = 0;
 
   for (const id of harnessIds) {
     const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
+    if (!pack) continue;
+
+    for (const c of pack.config) {
+      const sourcePath = expandHomePath(c.host);
+      const destPath = path.join(CONFIGS_DIR, c.config);
+
+      if (!fs.existsSync(sourcePath)) continue;
+      if (fs.existsSync(destPath)) continue;
+
+      try {
+        const parentDir = path.dirname(destPath);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+        }
+        fs.cpSync(sourcePath, destPath, { recursive: true });
+        count++;
+      } catch {
+        clack.log.error(`Failed to migrate: ${sourcePath}`);
+      }
+    }
+  }
+
+  return count;
+}
+
+export function migrateAllToolConfigs(fs: FsReader, toolIds: string[]): number {
+  let count = 0;
+
+  for (const id of toolIds) {
+    const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
     if (!pack) continue;
 
     for (const c of pack.config) {

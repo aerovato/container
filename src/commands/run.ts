@@ -42,9 +42,8 @@ export async function runCommand(
 
   const dirty = getBuildDirty(stateStore);
   if (dirty) {
-    const buildTarget = dirty === "core" ? "full" : "harness";
     const shouldBuild = await clack.confirm({
-      message: `Build is stale. Run 'container build ${buildTarget}' now?`,
+      message: `Build is stale. Run 'container build ${dirty}' now?`,
       initialValue: false,
     });
     if (clack.isCancel(shouldBuild)) {
@@ -52,13 +51,7 @@ export async function runCommand(
       process.exit(0);
     }
     if (shouldBuild) {
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fs,
-        buildTarget,
-      );
+      const result = buildImage(runtime, settingsStore, stateStore, fs, dirty);
       if (!result.ok) {
         clack.log.error("Failed to build image");
         process.exit(1);
@@ -66,7 +59,7 @@ export async function runCommand(
       clack.log.success("Image built successfully");
     } else {
       clack.log.warn(
-        `Continuing with existing image. Run 'container build ${buildTarget}' to rebuild.`,
+        `Continuing with existing image. Run 'container build ${dirty}' to rebuild.`,
       );
     }
   }

@@ -14,6 +14,7 @@ import {
   generateContainerName,
   buildImage,
   CORE_DOCKERFILE_PATH,
+  TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
 } from "../src/docker";
 import {
@@ -23,6 +24,7 @@ import {
   DEFAULT_CORE_COMMANDS,
 } from "../src/dockerfile-core";
 import { generateDockerfileHarness } from "../src/dockerfile-harness";
+import { generateDockerfileTools } from "../src/dockerfile-tools";
 import {
   getOtherSessionCount,
   stopContainerIfLastSession,
@@ -303,10 +305,11 @@ describe("buildImage", () => {
   }
 
   describe("full target", () => {
-    it("builds all 3 stages", () => {
+    it("builds all 4 stages", () => {
       seedDirs();
       const runtime = new Runtime(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
+      enqueue({ status: 0 });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -322,7 +325,7 @@ describe("buildImage", () => {
       expect(result.ok).toBe(true);
 
       const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(3);
+      expect(builds).toHaveLength(4);
     });
 
     it("generates Dockerfile.Core and Dockerfile.Harness to temp", () => {
@@ -337,6 +340,7 @@ describe("buildImage", () => {
       buildImage(runtime, settingsStore, stateStore, fsReader, "full");
 
       expect(fs.existsSync(CORE_DOCKERFILE_PATH)).toBe(true);
+      expect(fs.existsSync(TOOLS_DOCKERFILE_PATH)).toBe(true);
       expect(fs.existsSync(HARNESS_DOCKERFILE_PATH)).toBe(true);
     });
   });
@@ -430,7 +434,8 @@ describe("buildImage", () => {
       seedDirs();
       const runtime = new Runtime(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
-      stateStore.save({ buildDirty: "core" });
+      stateStore.save({ buildDirty: "tools" });
+      enqueue({ status: 0 });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -461,11 +466,11 @@ describe("buildImage", () => {
       expect(state.value.buildDirty).toBeUndefined();
     });
 
-    it("harness build leaves core dirty intact", () => {
+    it("harness build leaves tools dirty intact", () => {
       seedDirs();
       const runtime = new Runtime(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
-      stateStore.save({ buildDirty: "core" });
+      stateStore.save({ buildDirty: "tools" });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -475,7 +480,7 @@ describe("buildImage", () => {
       const state = stateStore.load();
       expect(state.ok).toBe(true);
       if (!state.ok) return;
-      expect(state.value.buildDirty).toBe("core");
+      expect(state.value.buildDirty).toBe("tools");
     });
   });
 });
@@ -524,13 +529,13 @@ describe("generateDockerfileHarness", () => {
   it("generates FROM preamble with no harnesses", () => {
     const result = generateDockerfileHarness([]);
     expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+      "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
     );
   });
 
   it("includes dockerfileLines for enabled harnesses", () => {
     const result = generateDockerfileHarness(["claude"]);
-    expect(result).toContain("FROM localhost/aerovato/container-v3-core");
+    expect(result).toContain("FROM localhost/aerovato/container-v3-tools");
     expect(result).toContain("curl -fsSL https://claude.ai/install.sh");
   });
 
@@ -543,7 +548,7 @@ describe("generateDockerfileHarness", () => {
   it("skips unknown harness ids", () => {
     const result = generateDockerfileHarness(["nonexistent"]);
     expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+      "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
     );
   });
 });
@@ -723,5 +728,28 @@ describe("stopOrphanedContainers", () => {
     const stopCalls = calls.filter(c => c.args[0] === "stop");
     expect(stopCalls).toHaveLength(1);
     expect(stopCalls[0]!.args).toContain("container-foo-abc12345");
+  });
+});
+
+describe("generateDockerfileTools", () => {
+  it("generates FROM preamble with no tools", () => {
+    const result = generateDockerfileTools([]);
+    expect(result).toBe(
+      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+    );
+  });
+
+  it("includes dockerfileLines for enabled tools", () => {
+    const result = generateDockerfileTools(["bun", "deno"]);
+    expect(result).toContain("FROM localhost/aerovato/container-v3-core");
+    expect(result).toContain("curl -fsSL https://bun.sh/install | bash");
+    expect(result).toContain("curl -fsSL https://deno.land/install.sh | sh");
+  });
+
+  it("skips unknown tool ids", () => {
+    const result = generateDockerfileTools(["nonexistent"]);
+    expect(result).toBe(
+      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
+    );
   });
 });

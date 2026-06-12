@@ -4,7 +4,7 @@ export type Result<T, E = string> =
   | { ok: true; value: T }
   | { ok: false; error: E };
 
-export type BuildTarget = "full" | "harness" | "user";
+export type BuildTarget = "full" | "tools" | "harness" | "user";
 
 const RuntimeBinSchema = z.enum(["docker", "podman"]);
 export type RuntimeBin = z.infer<typeof RuntimeBinSchema>;
@@ -19,7 +19,7 @@ export const DockerfileCoreConfigSchema = z.object({
 });
 export type DockerfileCoreConfig = z.infer<typeof DockerfileCoreConfigSchema>;
 
-export interface HarnessConfig {
+export interface ConfigMount {
   host: string;
   config: string;
   mount: string;
@@ -30,7 +30,15 @@ export interface HarnessPack {
   name: string;
   detectCommand: string;
   dockerfileLines: string[];
-  config: HarnessConfig[];
+  config: ConfigMount[];
+}
+
+export interface ToolPack {
+  id: string;
+  name: string;
+  detectCommand: string;
+  dockerfileLines: string[];
+  config: ConfigMount[];
 }
 
 export const SystemMountsSchema = z.object({
@@ -45,6 +53,7 @@ export const SettingsSchema = z.object({
   tosVersion: z.number().optional(),
   dockerfileCore: DockerfileCoreConfigSchema.optional(),
   enabledHarnesses: z.array(z.string()).optional(),
+  enabledTools: z.array(z.string()).optional(),
   runtime: RuntimeBinSchema.optional(),
   systemMounts: SystemMountsSchema.optional(),
   dockerRunFlags: z.array(z.string()).optional(),
@@ -53,7 +62,7 @@ export const SettingsSchema = z.object({
 export type Settings = z.infer<typeof SettingsSchema>;
 
 export const StateSchema = z.object({
-  buildDirty: z.enum(["core", "harness"]).optional(),
+  buildDirty: z.enum(["tools", "harness"]).optional(),
   lastUpdateCheck: z.number().optional(),
 });
 export type StateData = z.infer<typeof StateSchema>;

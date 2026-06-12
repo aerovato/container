@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR } from "../src/config";
-import { needsOnboarding, LATEST_ONBOARDING_VERSION } from "../src/onboarding";
+import { CONFIGS_DIR, FsReader } from "../src/config";
+import {
+  needsOnboarding,
+  LATEST_ONBOARDING_VERSION,
+  detectTools,
+  migrateAllToolConfigs,
+} from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
 import { Executor } from "../src/runtime";
 
@@ -166,5 +171,42 @@ describe("expandHomePath", () => {
       ? path.join(os.homedir(), p.slice(1))
       : p;
     expect(expanded).toBe("/absolute/path");
+  });
+});
+
+describe("detectTools", () => {
+  it("detects tool installation based on exit code 0", () => {
+    const mockExecutor: Executor = {
+      spawnSync(command: string) {
+        return {
+          status: command.includes("bun") ? 0 : 1,
+          stdout: "",
+          stderr: "",
+        };
+      },
+    };
+    const detected = detectTools(mockExecutor);
+    expect(detected).toEqual(["bun"]);
+  });
+});
+
+describe("migrateAllToolConfigs", () => {
+  it("copies tool config from host to CONFIGS_DIR without overwriting existing files", () => {
+    const home = os.homedir();
+    fs.mkdirSync(path.join(home, ".bun"), { recursive: true });
+    fs.writeFileSync(path.join(home, ".bunfig.toml"), "bun = true");
+    fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+
+    // Pre-exist a different config to test non-overwriting
+    fs.writeFileSync(path.join(CONFIGS_DIR, ".bunfig.toml"), "existing = true");
+
+    migrateAllToolConfigs(fs as unknown as FsReader, ["bun"]);
+
+    // Check that we didn't overwrite the existing config
+    const content = fs.readFileSync(
+      path.join(CONFIGS_DIR, ".bunfig.toml"),
+      "utf-8",
+    );
+    expect(content).toBe("existing = true");
   });
 });

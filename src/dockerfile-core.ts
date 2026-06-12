@@ -1,6 +1,7 @@
 import { DockerfileCoreConfig } from "./types";
 
 export const CORE_IMAGE = "localhost/aerovato/container-v3-core";
+export const TOOLS_IMAGE = "localhost/aerovato/container-v3-tools";
 export const HARNESS_IMAGE = "localhost/aerovato/container-v3-harness";
 export const USER_IMAGE = "localhost/aerovato/container-v3";
 

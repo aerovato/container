@@ -12,19 +12,27 @@ import {
 } from "./config";
 import {
   CORE_IMAGE,
+  TOOLS_IMAGE,
   HARNESS_IMAGE,
   USER_IMAGE,
   resolveCoreConfig,
   generateDockerfileCore,
 } from "./dockerfile-core";
+import { generateDockerfileTools } from "./dockerfile-tools";
 import { generateDockerfileHarness } from "./dockerfile-harness";
 import { Result, BuildTarget } from "./types";
+
+const BUILD_ORDER: BuildTarget[] = ["full", "tools", "harness", "user"];
+function shouldBuild(target: BuildTarget, stage: BuildTarget): boolean {
+  return BUILD_ORDER.indexOf(target) <= BUILD_ORDER.indexOf(stage);
+}
 
 export const CONTAINER_PREFIX = "container";
 export const IMAGE_TAG = "latest";
 export const CONTAINER_IMAGE = `${USER_IMAGE}:${IMAGE_TAG}`;
 
 export const CORE_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Core");
+export const TOOLS_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Tools");
 export const HARNESS_DOCKERFILE_PATH = path.join(
   TEMP_DIR,
   "Dockerfile.Harness",
@@ -52,7 +60,7 @@ export function buildImage(
   if (!settingsResult.ok) return settingsResult;
   const settings = settingsResult.value;
 
-  if (target === "full") {
+  if (shouldBuild(target, "full")) {
     const coreContent = generateDockerfileCore(
       resolveCoreConfig(settings.dockerfileCore ?? {}),
     );
@@ -66,7 +74,20 @@ export function buildImage(
     if (!coreResult.ok) return coreResult;
   }
 
-  if (target === "full" || target === "harness") {
+  if (shouldBuild(target, "tools")) {
+    const enabledToolIds = settings.enabledTools ?? [];
+    const toolsContent = generateDockerfileTools(enabledToolIds);
+    fs.writeFileSync(TOOLS_DOCKERFILE_PATH, toolsContent);
+    clack.log.info(`Building: ${TOOLS_IMAGE}`);
+    const toolsResult = runtime.build(
+      TOOLS_DOCKERFILE_PATH,
+      `${TOOLS_IMAGE}:${IMAGE_TAG}`,
+      APPDATA_DIR,
+    );
+    if (!toolsResult.ok) return toolsResult;
+  }
+
+  if (shouldBuild(target, "harness")) {
     const enabledIds = settings.enabledHarnesses ?? [];
     const harnessContent = generateDockerfileHarness(enabledIds);
     fs.writeFileSync(HARNESS_DOCKERFILE_PATH, harnessContent);
@@ -97,15 +118,15 @@ function clearBuildDirty(stateStore: StateStore, target: BuildTarget): void {
   const stateResult = stateStore.load();
   if (!stateResult.ok) return;
   const state = stateResult.value;
+  if (state.buildDirty === undefined) return;
 
-  if (target === "full") {
-    const updated = { ...state };
-    delete updated.buildDirty;
-    stateStore.save(updated);
+  const targetIdx = BUILD_ORDER.indexOf(target);
+  const dirtyIdx = BUILD_ORDER.indexOf(state.buildDirty);
+  if (targetIdx === -1 || dirtyIdx === -1) {
     return;
   }
 
-  if (target === "harness" && state.buildDirty === "harness") {
+  if (targetIdx <= dirtyIdx) {
     const updated = { ...state };
     delete updated.buildDirty;
     stateStore.save(updated);
