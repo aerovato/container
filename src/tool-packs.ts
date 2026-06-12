@@ -61,6 +61,16 @@ export const TOOL_PACKS = {
       { host: "~/.config/go", config: ".config/go", mount: "/root/.config/go" },
     ],
   },
+  python: {
+    id: "python",
+    name: "Python",
+    detectCommand: "which python3",
+    dockerfileLines: [
+      "RUN apt-get update && apt-get install -y python3 python3-dev python3-venv python3-pip",
+      "RUN ln -sf /usr/bin/python3 /usr/bin/python",
+    ],
+    config: [],
+  },
   uv: {
     id: "uv",
     name: "uv (Python)",

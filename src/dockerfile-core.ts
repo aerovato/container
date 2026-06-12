@@ -33,16 +33,7 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | b
     && nvm install \${NODE_VERSION} \\
     && nvm use \${NODE_VERSION} \\
     && nvm alias default \${NODE_VERSION} \\
-    && ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/"* /usr/local/bin/
-
-RUN apt-get update \\
-    && apt-get install -y \\
-        python3 \\
-        python3-dev \\
-        python3-venv \\
-        python3-pip
-
-RUN ln -sf /usr/bin/python3 /usr/bin/python`;
+    && ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/"* /usr/local/bin/`;
 
 export const DOCKERFILE_CORE_DEFAULTS: Required<DockerfileCoreConfig> = {
   baseImage: "ubuntu:24.04",
