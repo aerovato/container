@@ -11,9 +11,15 @@ import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
 
 export const LATEST_ONBOARDING_VERSION = 4;
 
-export function needsOnboarding(settings: Settings): boolean {
+export type OnboardingReason = "first-time" | "manual" | "upgrade";
+
+export function needsOnboarding(
+  settings: Settings,
+): OnboardingReason | undefined {
   const version = settings.onboardingVersion;
-  return version === undefined || version < LATEST_ONBOARDING_VERSION;
+  if (version === undefined) return "first-time";
+  if (version < LATEST_ONBOARDING_VERSION) return "upgrade";
+  return undefined;
 }
 
 export async function runOnboarding(
@@ -22,8 +28,17 @@ export async function runOnboarding(
   settings: Settings,
   settingsStore: SettingsStore,
   stateStore: StateStore,
+  reason: OnboardingReason,
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Onboarding");
+
+  if (reason === "upgrade") {
+    clack.note(
+      "Re-onboarding triggered by a new feature update.",
+      "Onboarding",
+      { format: line => line },
+    );
+  }
 
   const mode = await clack.select({
     message: "Choose setup mode",

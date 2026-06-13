@@ -20,22 +20,23 @@ beforeEach(() => {
 });
 
 describe("needsOnboarding", () => {
-  it("returns true when onboardingVersion is undefined", () => {
-    expect(needsOnboarding({})).toBe(true);
+  it("returns first-time when onboardingVersion is undefined", () => {
+    expect(needsOnboarding({})).toBe("first-time");
   });
 
-  it("returns true when onboardingVersion is less than latest", () => {
-    expect(needsOnboarding({ onboardingVersion: 1 })).toBe(true);
+  it("returns upgrade when onboardingVersion is less than latest", () => {
+    expect(needsOnboarding({ onboardingVersion: 1 })).toBe("upgrade");
+    expect(needsOnboarding({ onboardingVersion: 3 })).toBe("upgrade");
   });
 
-  it("returns false when onboardingVersion equals latest", () => {
+  it("returns undefined when onboardingVersion equals latest", () => {
     expect(
       needsOnboarding({ onboardingVersion: LATEST_ONBOARDING_VERSION }),
-    ).toBe(false);
+    ).toBe(undefined);
   });
 
-  it("returns false when onboardingVersion exceeds latest", () => {
-    expect(needsOnboarding({ onboardingVersion: 99 })).toBe(false);
+  it("returns undefined when onboardingVersion exceeds latest", () => {
+    expect(needsOnboarding({ onboardingVersion: 99 })).toBe(undefined);
   });
 });
 

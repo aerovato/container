@@ -22,6 +22,7 @@ import {
   needsOnboarding,
   runOnboarding,
   migrateAllToolConfigs,
+  OnboardingReason,
 } from "./onboarding";
 import { parseArgs } from "./args";
 import { buildCommand } from "./commands/build";
@@ -87,13 +88,17 @@ async function main(): Promise<void> {
   }
   let settings = settingsResult.value;
 
-  if (parsed.command === "init" || needsOnboarding(settings)) {
+  const onboardingStatus: OnboardingReason | undefined =
+    parsed.command === "init" ? "manual" : needsOnboarding(settings);
+
+  if (onboardingStatus !== undefined) {
     const onboardResult = await runOnboarding(
       fsReader,
       executor,
       settings,
       settingsStore,
       stateStore,
+      onboardingStatus,
     );
     settings = onboardResult.settings;
     settingsStore.save(settings);
