@@ -1,5 +1,14 @@
 import { ToolPack } from "./types";
 
+export const DEFAULT_ENABLED_TOOLS = [
+  "npm-config",
+  "git-config",
+  "vim-config",
+  "python",
+  "bun",
+  "enhanced-tools",
+];
+
 export const TOOL_PACKS = {
   "npm-config": {
     id: "npm-config",

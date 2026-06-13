@@ -16,8 +16,13 @@ import {
   ensureTempDir,
 } from "./config";
 import { Runtime, Executor } from "./runtime";
+import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
-import { needsOnboarding, runOnboarding } from "./onboarding";
+import {
+  needsOnboarding,
+  runOnboarding,
+  migrateAllToolConfigs,
+} from "./onboarding";
 import { parseArgs } from "./args";
 import { buildCommand } from "./commands/build";
 import { runCommand } from "./commands/run";
@@ -27,8 +32,39 @@ import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
 import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
+import { DEFAULT_ENABLED_TOOLS } from "./tool-packs";
 
 const executor: Executor = { spawnSync };
+
+function setDefaultSettings(
+  fs: FsReader,
+  exec: Executor,
+  settings: Settings,
+  settingsStore: SettingsStore,
+): Settings {
+  let updated = false;
+  const result = { ...settings };
+
+  if (result.enabledTools === undefined) {
+    result.enabledTools = DEFAULT_ENABLED_TOOLS;
+    migrateAllToolConfigs(fs, DEFAULT_ENABLED_TOOLS);
+    updated = true;
+  }
+
+  if (!result.runtime) {
+    const detected = getDefaultRuntime(exec);
+    if (detected) {
+      result.runtime = detected;
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    settingsStore.save(result);
+  }
+
+  return result;
+}
 
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
@@ -66,13 +102,7 @@ async function main(): Promise<void> {
     if (parsed.command === "init") return;
   }
 
-  if (!settings.runtime) {
-    const detected = getDefaultRuntime(executor);
-    if (detected) {
-      settings.runtime = detected;
-      settingsStore.save(settings);
-    }
-  }
+  settings = setDefaultSettings(fsReader, executor, settings, settingsStore);
 
   if (!settings.runtime) {
     clack.log.error(
