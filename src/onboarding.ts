@@ -4,15 +4,22 @@ import * as clack from "@clack/prompts";
 import { FsReader, CONFIGS_DIR, SettingsStore, StateStore } from "./config";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
+import { TOOL_PACKS } from "./tool-packs";
 import { buildImage } from "./docker";
 import { Executor, Runtime } from "./runtime";
 import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
 
-export const LATEST_ONBOARDING_VERSION = 3;
+export const LATEST_ONBOARDING_VERSION = 4;
 
-export function needsOnboarding(settings: Settings): boolean {
+export type OnboardingReason = "first-time" | "manual" | "upgrade";
+
+export function needsOnboarding(
+  settings: Settings,
+): OnboardingReason | undefined {
   const version = settings.onboardingVersion;
-  return version === undefined || version < LATEST_ONBOARDING_VERSION;
+  if (version === undefined) return "first-time";
+  if (version < LATEST_ONBOARDING_VERSION) return "upgrade";
+  return undefined;
 }
 
 export async function runOnboarding(
@@ -21,8 +28,17 @@ export async function runOnboarding(
   settings: Settings,
   settingsStore: SettingsStore,
   stateStore: StateStore,
+  reason: OnboardingReason,
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Onboarding");
+
+  if (reason === "upgrade") {
+    clack.note(
+      "Re-onboarding triggered by a new feature update.",
+      "Onboarding",
+      { format: line => line },
+    );
+  }
 
   const mode = await clack.select({
     message: "Choose setup mode",
@@ -40,12 +56,13 @@ export async function runOnboarding(
     process.exit(0);
   }
 
+  settings.onboardingVersion = LATEST_ONBOARDING_VERSION;
+
   const result =
     mode === "express"
       ? await expressSetup(fs, executor, settings, settingsStore, stateStore)
       : await customSetup(fs, executor, settings, settingsStore, stateStore);
 
-  result.settings.onboardingVersion = LATEST_ONBOARDING_VERSION;
   return result;
 }
 
@@ -65,8 +82,16 @@ async function expressSetup(
   );
 
   spinner.start("Migrating harness configs");
-  const migratedCount = migrateAllConfigs(fs, harnessIds);
+  const migratedCount = migrateHarnessConfigs(fs, harnessIds);
   spinner.stop(`Migrated ${migratedCount} config items`);
+
+  spinner.start("Detecting installed tooling");
+  const toolIds = detectTools(executor);
+  spinner.stop(`Detected ${toolIds.length} tools`);
+
+  spinner.start("Migrating tool configs");
+  const toolMigratedCount = migrateToolConfigs(fs, toolIds);
+  spinner.stop(`Migrated ${toolMigratedCount} tool config items`);
 
   spinner.start("Detecting container runtime");
   const runtime = getDefaultRuntime(executor);
@@ -74,13 +99,25 @@ async function expressSetup(
 
   const summary = [
     `Enabled Harnesses: ${harnessIds.join(", ") || "none"}`,
-    `Migrated Configs: ${migratedCount}`,
+    `Enabled Tools: ${toolIds.join(", ") || "none"}`,
+    `Migrated Configs: ${migratedCount + toolMigratedCount}`,
     `Runtime: ${runtime || "not detected"}`,
     `SSH Mount: enabled`,
-    `Gitconfig Mount: enabled`,
   ].join("\n");
 
   clack.note(summary, "Configuration Summary", { format: line => line });
+
+  const finalSettings: Settings = {
+    ...settings,
+    enabledHarnesses: harnessIds,
+    enabledTools: toolIds,
+    runtime,
+    systemMounts: { ssh: true },
+  };
+  const finalState: StateData = { buildDirty: "harness" };
+
+  settingsStore.save(finalSettings);
+  stateStore.save(finalState);
 
   if (runtime) {
     const rt = new Runtime(executor, runtime);
@@ -94,15 +131,7 @@ async function expressSetup(
     }
   }
 
-  return {
-    settings: {
-      ...settings,
-      enabledHarnesses: harnessIds,
-      runtime,
-      systemMounts: { gitconfig: true, ssh: true },
-    },
-    state: { buildDirty: "harness" },
-  };
+  return { settings: finalSettings, state: finalState };
 }
 
 async function customSetup(
@@ -114,14 +143,33 @@ async function customSetup(
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Custom Setup");
 
-  const harnessIds = await selectHarnessesInteractive(settings);
+  const harnessIds = await selectHarnessesInteractive(executor, settings);
   if (harnessIds.length > 0) {
     await migrateConfigsInteractive(fs, harnessIds);
+  }
+  const toolIds = await selectToolsInteractive(executor, settings);
+  if (toolIds.length > 0) {
+    const spinner = clack.spinner();
+    spinner.start("Migrating tool configs");
+    const toolMigratedCount = migrateToolConfigs(fs, toolIds);
+    spinner.stop(`Migrated ${toolMigratedCount} tool config items`);
   }
   const runtime = await selectRuntimeInteractive(executor, settings.runtime);
   const sshMount = await confirmSSHMount(settings);
 
   clack.note("Onboarding complete.", "Done", { format: line => line });
+
+  const finalSettings: Settings = {
+    ...settings,
+    enabledHarnesses: harnessIds,
+    enabledTools: toolIds,
+    runtime,
+    systemMounts: { ssh: sshMount },
+  };
+  const finalState: StateData = { buildDirty: "harness" };
+
+  settingsStore.save(finalSettings);
+  stateStore.save(finalState);
 
   if (runtime) {
     const shouldBuild = await clack.confirm({
@@ -140,22 +188,48 @@ async function customSetup(
     }
   }
 
-  return {
-    settings: {
-      ...settings,
-      enabledHarnesses: harnessIds,
-      runtime,
-      systemMounts: { gitconfig: true, ssh: sshMount },
-    },
-    state: { buildDirty: "harness" },
-  };
+  return { settings: finalSettings, state: finalState };
+}
+
+async function selectToolsInteractive(
+  executor: Executor,
+  settings: Settings,
+): Promise<string[]> {
+  const allIds = Object.keys(TOOL_PACKS);
+  const currentIds =
+    settings.enabledTools === undefined
+      ? detectTools(executor)
+      : settings.enabledTools;
+
+  const selectedIds = await clack.multiselect({
+    message: "Select tools to install (space to select, submit via enter)",
+    options: allIds.map(id => {
+      const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
+      return {
+        value: id,
+        label: pack.name,
+      };
+    }),
+    initialValues: currentIds,
+  });
+
+  if (clack.isCancel(selectedIds)) {
+    clack.cancel("Onboarding cancelled");
+    process.exit(0);
+  }
+
+  return selectedIds as string[];
 }
 
 async function selectHarnessesInteractive(
+  executor: Executor,
   settings: Settings,
 ): Promise<string[]> {
   const allIds = Object.keys(HARNESS_PACKS);
-  const currentIds = settings.enabledHarnesses ?? [];
+  const currentIds =
+    settings.enabledHarnesses === undefined
+      ? detectHarnesses(executor)
+      : settings.enabledHarnesses;
 
   const selectedIds = await clack.multiselect({
     message: "Select harnesses to install (space to select, submit via enter)",
@@ -202,6 +276,7 @@ async function migrateConfigsInteractive(
   const selection = await clack.multiselect({
     message: "Select harness configs to migrate",
     options,
+    required: false,
   });
 
   if (clack.isCancel(selection)) {
@@ -304,15 +379,23 @@ async function selectRuntimeInteractive(
   return selected;
 }
 
+function shouldEnablePack(
+  shouldEnable: boolean | string,
+  executor: Executor,
+): boolean {
+  if (typeof shouldEnable === "boolean") return shouldEnable;
+  const result = executor.spawnSync(shouldEnable, [], {
+    shell: true,
+    stdio: "pipe",
+  });
+  return result.status === 0;
+}
+
 function detectHarnesses(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-    const result = executor.spawnSync(pack.detectCommand, [], {
-      shell: true,
-      stdio: "pipe",
-    });
-    if (result.status === 0) {
+    if (shouldEnablePack(pack.shouldEnable, executor)) {
       detected.push(id);
     }
   }
@@ -320,11 +403,53 @@ function detectHarnesses(executor: Executor): string[] {
   return detected;
 }
 
-function migrateAllConfigs(fs: FsReader, harnessIds: string[]): number {
+export function detectTools(executor: Executor): string[] {
+  const detected: string[] = [];
+
+  for (const [id, pack] of Object.entries(TOOL_PACKS)) {
+    if (shouldEnablePack(pack.shouldEnable, executor)) {
+      detected.push(id);
+    }
+  }
+
+  return detected;
+}
+
+function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
   let count = 0;
 
   for (const id of harnessIds) {
     const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
+    if (!pack) continue;
+
+    for (const c of pack.config) {
+      const sourcePath = expandHomePath(c.host);
+      const destPath = path.join(CONFIGS_DIR, c.config);
+
+      if (!fs.existsSync(sourcePath)) continue;
+      if (fs.existsSync(destPath)) continue;
+
+      try {
+        const parentDir = path.dirname(destPath);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+        }
+        fs.cpSync(sourcePath, destPath, { recursive: true });
+        count++;
+      } catch {
+        clack.log.error(`Failed to migrate: ${sourcePath}`);
+      }
+    }
+  }
+
+  return count;
+}
+
+export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
+  let count = 0;
+
+  for (const id of toolIds) {
+    const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
     if (!pack) continue;
 
     for (const c of pack.config) {

@@ -17,7 +17,7 @@ export function resolveContainerTarget(target: string | undefined): string {
 
 export function getBuildDirty(
   stateStore: StateStore,
-): "core" | "harness" | undefined {
+): "tools" | "harness" | undefined {
   const result = stateStore.load();
   if (!result.ok) return undefined;
   return result.value.buildDirty;

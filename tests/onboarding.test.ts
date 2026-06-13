@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR } from "../src/config";
-import { needsOnboarding, LATEST_ONBOARDING_VERSION } from "../src/onboarding";
+import { CONFIGS_DIR, FsReader } from "../src/config";
+import {
+  needsOnboarding,
+  LATEST_ONBOARDING_VERSION,
+  detectTools,
+  migrateToolConfigs,
+} from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
 import { Executor } from "../src/runtime";
 
@@ -15,22 +20,23 @@ beforeEach(() => {
 });
 
 describe("needsOnboarding", () => {
-  it("returns true when onboardingVersion is undefined", () => {
-    expect(needsOnboarding({})).toBe(true);
+  it("returns first-time when onboardingVersion is undefined", () => {
+    expect(needsOnboarding({})).toBe("first-time");
   });
 
-  it("returns true when onboardingVersion is less than latest", () => {
-    expect(needsOnboarding({ onboardingVersion: 1 })).toBe(true);
+  it("returns upgrade when onboardingVersion is less than latest", () => {
+    expect(needsOnboarding({ onboardingVersion: 1 })).toBe("upgrade");
+    expect(needsOnboarding({ onboardingVersion: 3 })).toBe("upgrade");
   });
 
-  it("returns false when onboardingVersion equals latest", () => {
+  it("returns undefined when onboardingVersion equals latest", () => {
     expect(
       needsOnboarding({ onboardingVersion: LATEST_ONBOARDING_VERSION }),
-    ).toBe(false);
+    ).toBe(undefined);
   });
 
-  it("returns false when onboardingVersion exceeds latest", () => {
-    expect(needsOnboarding({ onboardingVersion: 99 })).toBe(false);
+  it("returns undefined when onboardingVersion exceeds latest", () => {
+    expect(needsOnboarding({ onboardingVersion: 99 })).toBe(undefined);
   });
 });
 
@@ -65,7 +71,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.detectCommand, [], {
+      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
         shell: true,
         stdio: "pipe",
       });
@@ -83,7 +89,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.detectCommand, [], {
+      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
         shell: true,
         stdio: "pipe",
       });
@@ -94,7 +100,7 @@ describe("detectHarnesses (via executor)", () => {
   });
 });
 
-describe("migrateAllConfigs (via fs)", () => {
+describe("migrateHarnessConfigs (via fs)", () => {
   const home = os.homedir();
 
   it("copies harness config from host to configs dir", () => {
@@ -166,5 +172,50 @@ describe("expandHomePath", () => {
       ? path.join(os.homedir(), p.slice(1))
       : p;
     expect(expanded).toBe("/absolute/path");
+  });
+});
+
+describe("detectTools", () => {
+  it("detects always-enabled tools and command-detected tools", () => {
+    const mockExecutor: Executor = {
+      spawnSync(command: string) {
+        return {
+          status: command.includes("deno") ? 0 : 1,
+          stdout: "",
+          stderr: "",
+        };
+      },
+    };
+    const detected = detectTools(mockExecutor);
+    expect(detected).toEqual([
+      "python",
+      "bun",
+      "enhanced-tools",
+      "npm-config",
+      "git-config",
+      "vim-config",
+      "deno",
+    ]);
+  });
+});
+
+describe("migrateToolConfigs", () => {
+  it("copies tool config from host to CONFIGS_DIR without overwriting existing files", () => {
+    const home = os.homedir();
+    fs.mkdirSync(path.join(home, ".bun"), { recursive: true });
+    fs.writeFileSync(path.join(home, ".bunfig.toml"), "bun = true");
+    fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+
+    // Pre-exist a different config to test non-overwriting
+    fs.writeFileSync(path.join(CONFIGS_DIR, ".bunfig.toml"), "existing = true");
+
+    migrateToolConfigs(fs as unknown as FsReader, ["bun"]);
+
+    // Check that we didn't overwrite the existing config
+    const content = fs.readFileSync(
+      path.join(CONFIGS_DIR, ".bunfig.toml"),
+      "utf-8",
+    );
+    expect(content).toBe("existing = true");
   });
 });

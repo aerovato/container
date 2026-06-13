@@ -121,10 +121,10 @@ describe("SettingsStore save", () => {
 describe("StateStore save", () => {
   it("writes state as JSON and creates dirs", () => {
     const store = new StateStore(fsReader, STATE_PATH);
-    const result = store.save({ buildDirty: "core" });
+    const result = store.save({ buildDirty: "tools" });
     expect(result.ok).toBe(true);
     const content = fs.readFileSync(STATE_PATH, "utf-8") as string;
-    expect(JSON.parse(content)).toEqual({ buildDirty: "core" });
+    expect(JSON.parse(content)).toEqual({ buildDirty: "tools" });
     expect(fs.existsSync(TEMP_DIR)).toBe(true);
   });
 });

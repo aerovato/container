@@ -38,7 +38,8 @@ If you have any questions or if there are any problems during migration **STOP**
 
 - Parse each mount line.
 - Convert to `settings.json`:
-  - Common host mounts (e.g. SSH, gitconfig) → `systemMounts`
+  - SSH host mount → `systemMounts.ssh`
+  - Gitconfig mount → enable `git-config` in `enabledTools`
   - Other mounts → append as `-v` entries in `dockerRunFlags`
 
 ### Dockerfile.Packages

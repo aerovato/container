@@ -30,9 +30,10 @@ Do for the user, one step at a time.
 
 3. Ask the user to run `container init`. This triggers interactive onboarding (Express or Custom mode). It handles:
    - Harness detection and selection
-   - Migrating existing harness configs
+   - Tool detection and selection
+   - Migrating existing harness and tool configs
    - Choosing container runtime (Docker or Podman)
-   - SSH / gitconfig mount preferences
+   - SSH mount preferences
 
 4. Build the Docker image (first time can take 5+ minutes):
    ```bash
@@ -45,9 +46,9 @@ All user data lives in `~/.code-container/`:
 
 ```
 ~/.code-container/
-├── configs/              # Harness configs (mounted into containers)
+├── configs/              # Harness and tool configs (mounted into containers)
 ├── Dockerfile.User       # User packages and customizations
-├── settings.json         # Primary configuration (harnesses, runtime, dockerfileCore, flags, mounts)
+├── settings.json         # Primary configuration (harnesses, tools, runtime, dockerfileCore, flags, mounts)
 └── temp/                 # Generated Dockerfiles + internal state (usually leave alone)
 ```
 
@@ -55,17 +56,19 @@ On upgrade from V2, old files (`MOUNTS.txt`, `DOCKER_FLAGS.txt`, `DOCKER_RUN_FLA
 
 ## Build Stages
 
-`container` uses a 3-stage build:
+`container` uses a 4-stage build:
 
-1. **Core** — Generated from `settings.dockerfileCore` (base image, system packages, Node, Python, etc.)
-2. **Harness** — Generated from `settings.enabledHarnesses` (installs selected coding harnesses)
-3. **User** — From `~/.code-container/Dockerfile.User`
+1. **Core** — Generated from `settings.dockerfileCore` (base image, system packages, Node.js, etc.)
+2. **Tools** — Generated from `settings.enabledTools` (installs selected development tools)
+3. **Harness** — Generated from `settings.enabledHarnesses` (installs selected coding harnesses)
+4. **User** — From `~/.code-container/Dockerfile.User`
 
 Images are tagged under `localhost/aerovato/container-v3-*`.
 
 Build targets:
 
 - `full` (default) — Rebuild everything
+- `tools` — Rebuild from Tools stage onward
 - `harness` — Rebuild from Harness stage onward
 - `user` — Rebuild User stage only (fastest for most customizations)
 
@@ -104,12 +107,13 @@ Most configuration lives in `~/.code-container/settings.json`. See [Settings.md]
 Key settings include:
 
 - `enabledHarnesses`
+- `enabledTools`
 - `runtime`
 - `systemMounts`
 - `dockerRunFlags` / `dockerExecFlags`
 - `dockerfileCore` (advanced)
 
-Edit this file directly. After changing `dockerfileCore` or `enabledHarnesses`, run `container build` to rebuild the image.
+Edit this file directly. After changing `dockerfileCore`, `enabledHarnesses`, or `enabledTools`, run `container build` to rebuild the image.
 
 ## Common Commands
 
@@ -117,7 +121,7 @@ Edit this file directly. After changing `dockerfileCore` or `enabledHarnesses`, 
 container                           # Enter container for current directory
 container run /path/to/project      # Specific project
 container run /path -- -p 8080:80   # With runtime flags
-container build [full|harness|user]
+container build [full|tools|harness|user]
 container init                      # Re-run onboarding / settings
 container stop [path]
 container remove [path]

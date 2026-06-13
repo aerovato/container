@@ -1,7 +1,7 @@
 import * as clack from "@clack/prompts";
 import { BuildTarget } from "./types";
 
-const BUILD_TARGETS: BuildTarget[] = ["full", "harness", "user"];
+const BUILD_TARGETS: BuildTarget[] = ["full", "tools", "harness", "user"];
 
 export type ParsedArgs =
   | { command: "run"; target: string | undefined; cliFlags: string[] }
@@ -28,7 +28,8 @@ Commands:
     list                List all containers
 
 Build targets:
-    full                Build all stages: Core -> Harness -> User
+    full                Build all stages: Core -> Tools -> Harness -> User
+    tools               Rebuild from Tools stage onward
     harness             Rebuild from Harness stage onward
     user                Build User stage only
 
@@ -43,6 +44,7 @@ Examples:
     container run -- -e FOO=bar            # Pass env vars (uses current directory)
     container build                        # Build all stages from scratch
     container build full                   # Build all stages from scratch
+    container build tools                 # Rebuild from Tools stage
     container build harness                # Rebuild from Harness stage
     container build user                   # Build User stage only
     container settings                     # Modify settings interactively

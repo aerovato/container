@@ -3,6 +3,7 @@ import { Runtime, Executor } from "./runtime";
 import { CONFIGS_DIR } from "./config";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
+import { TOOL_PACKS } from "./tool-packs";
 import { CONTAINER_IMAGE } from "./docker";
 
 export function getMounts(
@@ -24,8 +25,13 @@ export function getMounts(
     }
   }
 
-  if (settings.systemMounts?.gitconfig !== false) {
-    mounts.push(`${home}/.gitconfig:/root/.gitconfig:ro`);
+  const enabledToolIds = settings.enabledTools ?? [];
+  for (const id of enabledToolIds) {
+    const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
+    if (!pack) continue;
+    for (const c of pack.config) {
+      mounts.push(`${CONFIGS_DIR}/${c.config}:${c.mount}`);
+    }
   }
 
   if (settings.systemMounts?.ssh === true) {

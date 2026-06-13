@@ -229,8 +229,8 @@ describe("shared helpers", () => {
     it("returns buildDirty value from state", () => {
       fs.mkdirSync(TEMP_DIR, { recursive: true });
       const stateStore = new StateStore(fsReader, STATE_PATH);
-      stateStore.save({ buildDirty: "core" });
-      expect(getBuildDirty(stateStore)).toBe("core");
+      stateStore.save({ buildDirty: "tools" });
+      expect(getBuildDirty(stateStore)).toBe("tools");
     });
   });
 
@@ -285,7 +285,7 @@ describe("settingsCommand", () => {
     settingsStore.save({
       enabledHarnesses: ["opencode"],
       runtime: "docker",
-      systemMounts: { gitconfig: true, ssh: false },
+      systemMounts: { ssh: false },
     });
     stateStore.save({});
     return { settingsStore, stateStore };
@@ -371,16 +371,14 @@ describe("settingsCommand", () => {
     vi.mocked(clack.select)
       .mockResolvedValueOnce("mounts")
       .mockResolvedValueOnce("done");
-    vi.mocked(clack.confirm)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    vi.mocked(clack.confirm).mockResolvedValueOnce(true);
 
     await settingsCommand(runtime, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
     if (!saved.ok) return;
-    expect(saved.value.systemMounts).toEqual({ ssh: true, gitconfig: false });
+    expect(saved.value.systemMounts).toEqual({ ssh: true });
   });
 
   it("handles cancel on main menu", async () => {
@@ -411,5 +409,28 @@ describe("settingsCommand", () => {
       c => typeof c[0] === "object" && c[0]?.message?.includes("Rebuild"),
     );
     expect(rebuildCall).toBeUndefined();
+  });
+
+  it("updates enabledTools and saves buildDirty: tools when skipped", async () => {
+    const { settingsStore, stateStore } = setupStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("tools")
+      .mockResolvedValueOnce("done")
+      .mockResolvedValueOnce("skip");
+    vi.mocked(clack.multiselect).mockResolvedValueOnce(["bun", "deno"]);
+
+    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+
+    const saved = settingsStore.load();
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.enabledTools).toEqual(["bun", "deno"]);
+
+    const state = stateStore.load();
+    expect(state.ok).toBe(true);
+    if (!state.ok) return;
+    expect(state.value.buildDirty).toBe("tools");
   });
 });

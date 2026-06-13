@@ -16,8 +16,9 @@ import {
   ensureTempDir,
 } from "./config";
 import { Runtime, Executor } from "./runtime";
+import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
-import { needsOnboarding, runOnboarding } from "./onboarding";
+import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
 import { parseArgs } from "./args";
 import { buildCommand } from "./commands/build";
 import { runCommand } from "./commands/run";
@@ -29,6 +30,29 @@ import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
 
 const executor: Executor = { spawnSync };
+
+function setDefaultSettings(
+  exec: Executor,
+  settings: Settings,
+  settingsStore: SettingsStore,
+): Settings {
+  let updated = false;
+  const result = { ...settings };
+
+  if (!result.runtime) {
+    const detected = getDefaultRuntime(exec);
+    if (detected) {
+      result.runtime = detected;
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    settingsStore.save(result);
+  }
+
+  return result;
+}
 
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
@@ -51,28 +75,23 @@ async function main(): Promise<void> {
   }
   let settings = settingsResult.value;
 
-  if (parsed.command === "init" || needsOnboarding(settings)) {
+  const onboardingStatus: OnboardingReason | undefined =
+    parsed.command === "init" ? "manual" : needsOnboarding(settings);
+
+  if (onboardingStatus !== undefined) {
     const onboardResult = await runOnboarding(
       fsReader,
       executor,
       settings,
       settingsStore,
       stateStore,
+      onboardingStatus,
     );
     settings = onboardResult.settings;
-    settingsStore.save(settings);
-    stateStore.save(onboardResult.state);
-
     if (parsed.command === "init") return;
   }
 
-  if (!settings.runtime) {
-    const detected = getDefaultRuntime(executor);
-    if (detected) {
-      settings.runtime = detected;
-      settingsStore.save(settings);
-    }
-  }
+  settings = setDefaultSettings(executor, settings, settingsStore);
 
   if (!settings.runtime) {
     clack.log.error(
