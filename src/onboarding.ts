@@ -142,11 +142,11 @@ async function customSetup(
 ): Promise<{ settings: Settings; state: StateData }> {
   clack.intro("Custom Setup");
 
-  const harnessIds = await selectHarnessesInteractive(settings);
+  const harnessIds = await selectHarnessesInteractive(executor, settings);
   if (harnessIds.length > 0) {
     await migrateConfigsInteractive(fs, harnessIds);
   }
-  const toolIds = await selectToolsInteractive(settings);
+  const toolIds = await selectToolsInteractive(executor, settings);
   if (toolIds.length > 0) {
     migrateAllToolConfigs(fs, toolIds);
   }
@@ -184,9 +184,15 @@ async function customSetup(
   };
 }
 
-async function selectToolsInteractive(settings: Settings): Promise<string[]> {
+async function selectToolsInteractive(
+  executor: Executor,
+  settings: Settings,
+): Promise<string[]> {
   const allIds = Object.keys(TOOL_PACKS);
-  const currentIds = settings.enabledTools ?? [];
+  const currentIds =
+    settings.enabledTools === undefined
+      ? detectTools(executor)
+      : settings.enabledTools;
 
   const selectedIds = await clack.multiselect({
     message: "Select tools to install (space to select, submit via enter)",
@@ -209,10 +215,14 @@ async function selectToolsInteractive(settings: Settings): Promise<string[]> {
 }
 
 async function selectHarnessesInteractive(
+  executor: Executor,
   settings: Settings,
 ): Promise<string[]> {
   const allIds = Object.keys(HARNESS_PACKS);
-  const currentIds = settings.enabledHarnesses ?? [];
+  const currentIds =
+    settings.enabledHarnesses === undefined
+      ? detectHarnesses(executor)
+      : settings.enabledHarnesses;
 
   const selectedIds = await clack.multiselect({
     message: "Select harnesses to install (space to select, submit via enter)",
