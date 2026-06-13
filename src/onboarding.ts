@@ -259,6 +259,7 @@ async function migrateConfigsInteractive(
   const selection = await clack.multiselect({
     message: "Select harness configs to migrate",
     options,
+    required: false,
   });
 
   if (clack.isCancel(selection)) {
