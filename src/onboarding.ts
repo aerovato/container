@@ -56,12 +56,13 @@ export async function runOnboarding(
     process.exit(0);
   }
 
+  settings.onboardingVersion = LATEST_ONBOARDING_VERSION;
+
   const result =
     mode === "express"
       ? await expressSetup(fs, executor, settings, settingsStore, stateStore)
       : await customSetup(fs, executor, settings, settingsStore, stateStore);
 
-  result.settings.onboardingVersion = LATEST_ONBOARDING_VERSION;
   return result;
 }
 
