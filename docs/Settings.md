@@ -24,6 +24,11 @@ This is the primary configuration file for `container`. Most user preferences an
   - List of harness pack IDs to include in the image.
   - Example: `["opencode", "gemini", "codex"]`
 
+- `enabledTools` (string[]):
+  - List of tool pack IDs to install and configure in the image.
+  - When absent, a default set is applied: `["npm-config", "git-config", "vim-config", "python", "bun", "enhanced-tools"]`
+  - Example: `["npm-config", "git-config", "vim-config", "python", "bun", "uv", "enhanced-tools"]`
+
 - `runtime` ("docker" | "podman"):
   - Container runtime to use.
   - Example: `"docker"`
@@ -50,7 +55,6 @@ This is the primary configuration file for `container`. Most user preferences an
 
 ```json
 {
-  "gitconfig": true, // Mount ~/.gitconfig (read-only). Default: true
   "ssh": false // Mount ~/.ssh (read-only). Default: false
 }
 ```
@@ -81,15 +85,16 @@ When a user wants to customize their environment:
 
 1. For simple packages/tools → edit `Dockerfile.User`
 2. For base system changes (before harnesses) → edit `dockerfileCore` in `settings.json`
-3. For which harnesses to include → edit `enabledHarnesses`
-4. For runtime flags or mounts → use the dedicated keys above
+3. For which tools to include → edit `enabledTools`
+4. For which harnesses to include → edit `enabledHarnesses`
+5. For runtime flags or mounts → use the dedicated keys above
 
-After changing `dockerfileCore` or `enabledHarnesses`, the next `container` run will prompt the user to rebuild.
+After changing `dockerfileCore`, `enabledHarnesses`, or `enabledTools`, the next `container` run will prompt the user to rebuild.
 
 ## Do Not Edit
 
 - `migrationVersion`, `onboardingVersion`, `tosVersion` (managed automatically)
 - Anything inside `temp/` (generated files)
-  - Dockerfile.Core and Dockerfile.Harness are generated **dynamically** based on settings. Editing them directly does nothing.
+  - Dockerfile.Core, Dockerfile.Tools, and Dockerfile.Harness are generated **dynamically** based on settings. Editing them directly does nothing.
 
 For the full authoritative schema, see `src/types.ts` in the source repository.
