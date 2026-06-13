@@ -51,7 +51,7 @@ export async function settingsCommand(
         {
           value: "mounts",
           label: "System Mounts",
-          hint: `SSH: ${(settings.systemMounts?.ssh ?? false) ? "on" : "off"}, Gitconfig: ${(settings.systemMounts?.gitconfig ?? true) ? "on" : "off"}`,
+          hint: `SSH: ${(settings.systemMounts?.ssh ?? false) ? "on" : "off"}`,
         },
         { value: "done", label: "Done" },
       ],
@@ -130,21 +130,12 @@ export async function settingsCommand(
 
         if (clack.isCancel(ssh)) break;
 
-        const gitconfig = await clack.confirm({
-          message: "Mount ~/.gitconfig (read-only)?",
-          initialValue: settings.systemMounts?.gitconfig ?? true,
-        });
-
-        if (clack.isCancel(gitconfig)) break;
-
         settings = {
           ...settings,
-          systemMounts: { ssh, gitconfig },
+          systemMounts: { ssh },
         };
         settingsStore.save(settings);
-        clack.log.success(
-          `Mounts updated: SSH ${ssh ? "on" : "off"}, Gitconfig ${gitconfig ? "on" : "off"}`,
-        );
+        clack.log.success(`Mounts updated: SSH ${ssh ? "on" : "off"}`);
         break;
       }
     }

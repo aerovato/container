@@ -571,19 +571,6 @@ describe("getMounts", () => {
     expect(claudeConfig).toBeDefined();
   });
 
-  it("mounts gitconfig by default", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {});
-    expect(mounts).toContain(`${home}/.gitconfig:/root/.gitconfig:ro`);
-  });
-
-  it("skips gitconfig when explicitly disabled", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {
-      systemMounts: { gitconfig: false },
-    });
-    const gitMount = mounts.find(m => m.includes(".gitconfig"));
-    expect(gitMount).toBeUndefined();
-  });
-
   it("mounts ssh when enabled", () => {
     const mounts = getMounts("/home/user/foo", "foo", {
       systemMounts: { ssh: true },

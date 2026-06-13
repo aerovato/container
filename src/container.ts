@@ -34,10 +34,6 @@ export function getMounts(
     }
   }
 
-  if (settings.systemMounts?.gitconfig !== false) {
-    mounts.push(`${home}/.gitconfig:/root/.gitconfig:ro`);
-  }
-
   if (settings.systemMounts?.ssh === true) {
     mounts.push(`${home}/.ssh:/root/.ssh:ro`);
   }

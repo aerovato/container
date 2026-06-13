@@ -285,7 +285,7 @@ describe("settingsCommand", () => {
     settingsStore.save({
       enabledHarnesses: ["opencode"],
       runtime: "docker",
-      systemMounts: { gitconfig: true, ssh: false },
+      systemMounts: { ssh: false },
     });
     stateStore.save({});
     return { settingsStore, stateStore };
@@ -371,16 +371,14 @@ describe("settingsCommand", () => {
     vi.mocked(clack.select)
       .mockResolvedValueOnce("mounts")
       .mockResolvedValueOnce("done");
-    vi.mocked(clack.confirm)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    vi.mocked(clack.confirm).mockResolvedValueOnce(true);
 
     await settingsCommand(runtime, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
     if (!saved.ok) return;
-    expect(saved.value.systemMounts).toEqual({ ssh: true, gitconfig: false });
+    expect(saved.value.systemMounts).toEqual({ ssh: true });
   });
 
   it("handles cancel on main menu", async () => {

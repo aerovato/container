@@ -90,7 +90,6 @@ async function expressSetup(
     `Migrated Configs: ${migratedCount + toolMigratedCount}`,
     `Runtime: ${runtime || "not detected"}`,
     `SSH Mount: enabled`,
-    `Gitconfig Mount: enabled`,
   ].join("\n");
 
   clack.note(summary, "Configuration Summary", { format: line => line });
@@ -113,7 +112,7 @@ async function expressSetup(
       enabledHarnesses: harnessIds,
       enabledTools: toolIds,
       runtime,
-      systemMounts: { gitconfig: true, ssh: true },
+      systemMounts: { ssh: true },
     },
     state: { buildDirty: "harness" },
   };
@@ -164,7 +163,7 @@ async function customSetup(
       enabledHarnesses: harnessIds,
       enabledTools: toolIds,
       runtime,
-      systemMounts: { gitconfig: true, ssh: sshMount },
+      systemMounts: { ssh: sshMount },
     },
     state: { buildDirty: "harness" },
   };

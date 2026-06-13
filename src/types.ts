@@ -42,7 +42,6 @@ export interface ToolPack {
 }
 
 export const SystemMountsSchema = z.object({
-  gitconfig: z.boolean().optional(),
   ssh: z.boolean().optional(),
 });
 export type SystemMounts = z.infer<typeof SystemMountsSchema>;
