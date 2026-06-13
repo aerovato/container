@@ -11,6 +11,30 @@ export const TOOL_PACKS = {
       { host: "~/.npmrc", config: ".npmrc", mount: "/root/.npmrc" },
     ],
   },
+  "git-config": {
+    id: "git-config",
+    name: "Git Config",
+    detectCommand: "which git",
+    dockerfileLines: [],
+    config: [
+      { host: "~/.gitconfig", config: ".gitconfig", mount: "/root/.gitconfig" },
+      {
+        host: "~/.gitignore_global",
+        config: ".gitignore_global",
+        mount: "/root/.gitignore_global",
+      },
+    ],
+  },
+  "vim-config": {
+    id: "vim-config",
+    name: "Vim Config",
+    detectCommand: "which vim",
+    dockerfileLines: [],
+    config: [
+      { host: "~/.vimrc", config: ".vimrc", mount: "/root/.vimrc" },
+      { host: "~/.vim", config: ".vim", mount: "/root/.vim" },
+    ],
+  },
   bun: {
     id: "bun",
     name: "Bun",
