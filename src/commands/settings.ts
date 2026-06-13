@@ -6,6 +6,7 @@ import { HARNESS_PACKS } from "../harness-packs";
 import { TOOL_PACKS } from "../tool-packs";
 import { buildImage } from "../docker";
 import { BuildTarget } from "../types";
+import { migrateAllToolConfigs } from "../onboarding";
 
 type SettingsAction = "harnesses" | "tools" | "runtime" | "mounts" | "done";
 
@@ -96,6 +97,10 @@ export async function settingsCommand(
 
         if (!clack.isCancel(selectedTools)) {
           const newTools = (selectedTools as string[]).sort();
+          const addedTools = newTools.filter(t => !initialTools.includes(t));
+          if (addedTools.length > 0) {
+            migrateAllToolConfigs(fs, addedTools);
+          }
           settings = {
             ...settings,
             enabledTools: newTools,
