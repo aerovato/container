@@ -4,7 +4,7 @@
 
 Additions:
 
-- Added tool packs: 17 configurable development tools that you can enable to install inside your container
+- Added tool packs: configurable development tools that you can enable to install inside your container
 - Some tool packs come with mounts for specific config files or directories
 - New `container build tools` target to rebuild from Tools stage
 
@@ -17,7 +17,7 @@ Changes:
 
 FYI:
 
-- To configure which tools are enabled, run `container settings` and select "Enabled Tools"
+- To configure which tools are enabled, choose "Custom Setup" during re-onboarding or run `container settings` and select "Enabled Tools"
 - Use space to toggle tools and enter to confirm
 - After changing tools, rebuild the image
 

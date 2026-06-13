@@ -48,7 +48,7 @@ export const TOOL_PACKS = {
   },
   "npm-config": {
     id: "npm-config",
-    name: "npm Config",
+    name: "Npm Config",
     shouldEnable: true,
     dockerfileLines: [],
     config: [
@@ -164,15 +164,6 @@ export const TOOL_PACKS = {
     dockerfileLines: ["RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash"],
     config: [{ host: "~/.azure", config: ".azure", mount: "/root/.azure" }],
   },
-  kubectl: {
-    id: "kubectl",
-    name: "kubectl",
-    shouldEnable: "which kubectl",
-    dockerfileLines: [
-      'RUN ARCH=$(uname -m) && if [ "$ARCH" = "aarch64" ]; then KUBE_ARCH="arm64"; else KUBE_ARCH="amd64"; fi && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${KUBE_ARCH}/kubectl" && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl',
-    ],
-    config: [{ host: "~/.kube", config: ".kube", mount: "/root/.kube" }],
-  },
   neovim: {
     id: "neovim",
     name: "Neovim",
@@ -200,12 +191,5 @@ export const TOOL_PACKS = {
         mount: "/root/.cache/nvim",
       },
     ],
-  },
-  nano: {
-    id: "nano",
-    name: "Nano",
-    shouldEnable: "which nano",
-    dockerfileLines: ["RUN apt-get update && apt-get install -y nano"],
-    config: [{ host: "~/.nanorc", config: ".nanorc", mount: "/root/.nanorc" }],
   },
 } as const satisfies Record<string, ToolPack>;
