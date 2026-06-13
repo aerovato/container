@@ -71,7 +71,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.detectCommand, [], {
+      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
         shell: true,
         stdio: "pipe",
       });
@@ -89,7 +89,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.detectCommand, [], {
+      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
         shell: true,
         stdio: "pipe",
       });
@@ -176,18 +176,26 @@ describe("expandHomePath", () => {
 });
 
 describe("detectTools", () => {
-  it("detects tool installation based on exit code 0", () => {
+  it("detects always-enabled tools and command-detected tools", () => {
     const mockExecutor: Executor = {
       spawnSync(command: string) {
         return {
-          status: command.includes("bun") ? 0 : 1,
+          status: command.includes("deno") ? 0 : 1,
           stdout: "",
           stderr: "",
         };
       },
     };
     const detected = detectTools(mockExecutor);
-    expect(detected).toEqual(["bun"]);
+    expect(detected).toEqual([
+      "python",
+      "bun",
+      "enhanced-tools",
+      "npm-config",
+      "git-config",
+      "vim-config",
+      "deno",
+    ]);
   });
 });
 

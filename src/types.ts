@@ -28,7 +28,7 @@ export interface ConfigMount {
 export interface HarnessPack {
   id: string;
   name: string;
-  detectCommand: string;
+  shouldEnable: boolean | string;
   dockerfileLines: string[];
   config: ConfigMount[];
 }
@@ -36,7 +36,7 @@ export interface HarnessPack {
 export interface ToolPack {
   id: string;
   name: string;
-  detectCommand: string;
+  shouldEnable: boolean | string;
   dockerfileLines: string[];
   config: ConfigMount[];
 }

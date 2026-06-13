@@ -86,9 +86,6 @@ async function expressSetup(
 
   spinner.start("Detecting installed tooling");
   const toolIds = detectTools(executor);
-  if (!toolIds.includes("enhanced-tools")) {
-    toolIds.push("enhanced-tools");
-  }
   spinner.stop(`Detected ${toolIds.length} tools`);
 
   spinner.start("Migrating tool configs");
@@ -372,15 +369,23 @@ async function selectRuntimeInteractive(
   return selected;
 }
 
+function shouldEnablePack(
+  shouldEnable: boolean | string,
+  executor: Executor,
+): boolean {
+  if (typeof shouldEnable === "boolean") return shouldEnable;
+  const result = executor.spawnSync(shouldEnable, [], {
+    shell: true,
+    stdio: "pipe",
+  });
+  return result.status === 0;
+}
+
 function detectHarnesses(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-    const result = executor.spawnSync(pack.detectCommand, [], {
-      shell: true,
-      stdio: "pipe",
-    });
-    if (result.status === 0) {
+    if (shouldEnablePack(pack.shouldEnable, executor)) {
       detected.push(id);
     }
   }
@@ -392,11 +397,7 @@ export function detectTools(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(TOOL_PACKS)) {
-    const result = executor.spawnSync(pack.detectCommand, [], {
-      shell: true,
-      stdio: "pipe",
-    });
-    if (result.status === 0) {
+    if (shouldEnablePack(pack.shouldEnable, executor)) {
       detected.push(id);
     }
   }

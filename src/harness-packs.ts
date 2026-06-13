@@ -4,7 +4,7 @@ export const HARNESS_PACKS = {
   claude: {
     id: "claude",
     name: "Claude Code",
-    detectCommand: "which claude",
+    shouldEnable: "which claude",
     dockerfileLines: [
       "RUN curl -fsSL https://claude.ai/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
@@ -31,7 +31,7 @@ export const HARNESS_PACKS = {
   opencode: {
     id: "opencode",
     name: "OpenCode",
-    detectCommand: "which opencode",
+    shouldEnable: "which opencode",
     dockerfileLines: ["RUN npm install -g opencode-ai"],
     config: [
       {
@@ -59,21 +59,21 @@ export const HARNESS_PACKS = {
   codex: {
     id: "codex",
     name: "OpenAI Codex",
-    detectCommand: "which codex",
+    shouldEnable: "which codex",
     dockerfileLines: ["RUN npm install -g @openai/codex"],
     config: [{ host: "~/.codex", config: ".codex", mount: "/root/.codex" }],
   },
   gemini: {
     id: "gemini",
     name: "Gemini CLI",
-    detectCommand: "which gemini",
+    shouldEnable: "which gemini",
     dockerfileLines: ["RUN npm install -g @google/gemini-cli"],
     config: [{ host: "~/.gemini", config: ".gemini", mount: "/root/.gemini" }],
   },
   copilot: {
     id: "copilot",
     name: "GitHub Copilot CLI",
-    detectCommand: "which copilot",
+    shouldEnable: "which copilot",
     dockerfileLines: ["RUN npm install -g @github/copilot"],
     config: [
       { host: "~/.copilot", config: ".copilot", mount: "/root/.copilot" },
@@ -82,7 +82,7 @@ export const HARNESS_PACKS = {
   grok: {
     id: "grok",
     name: "Grok Build",
-    detectCommand: "which grok",
+    shouldEnable: "which grok",
     dockerfileLines: [
       "RUN curl -fsSL https://x.ai/cli/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
@@ -92,7 +92,7 @@ export const HARNESS_PACKS = {
   cursor: {
     id: "cursor",
     name: "Cursor CLI",
-    detectCommand: "which cursor-agent",
+    shouldEnable: "which cursor-agent",
     dockerfileLines: ["RUN curl https://cursor.com/install -fsS | bash"],
     config: [
       { host: "~/.cursor", config: ".cursor", mount: "/root/.cursor" },
@@ -111,14 +111,14 @@ export const HARNESS_PACKS = {
   nitro: {
     id: "nitro",
     name: "Aerovato Nitro",
-    detectCommand: "which nitro",
+    shouldEnable: "which nitro",
     dockerfileLines: ["RUN npm install -g @aerovato/nitro"],
     config: [{ host: "~/.nitro", config: ".nitro", mount: "/root/.nitro" }],
   },
   antigravity: {
     id: "antigravity",
     name: "Antigravity CLI",
-    detectCommand: "which agy",
+    shouldEnable: "which agy",
     dockerfileLines: [
       "RUN curl -fsSL https://antigravity.google/cli/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
