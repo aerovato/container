@@ -7,7 +7,7 @@ import {
   needsOnboarding,
   LATEST_ONBOARDING_VERSION,
   detectTools,
-  migrateAllToolConfigs,
+  migrateToolConfigs,
 } from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
 import { Executor } from "../src/runtime";
@@ -100,7 +100,7 @@ describe("detectHarnesses (via executor)", () => {
   });
 });
 
-describe("migrateAllConfigs (via fs)", () => {
+describe("migrateHarnessConfigs (via fs)", () => {
   const home = os.homedir();
 
   it("copies harness config from host to configs dir", () => {
@@ -199,7 +199,7 @@ describe("detectTools", () => {
   });
 });
 
-describe("migrateAllToolConfigs", () => {
+describe("migrateToolConfigs", () => {
   it("copies tool config from host to CONFIGS_DIR without overwriting existing files", () => {
     const home = os.homedir();
     fs.mkdirSync(path.join(home, ".bun"), { recursive: true });
@@ -209,7 +209,7 @@ describe("migrateAllToolConfigs", () => {
     // Pre-exist a different config to test non-overwriting
     fs.writeFileSync(path.join(CONFIGS_DIR, ".bunfig.toml"), "existing = true");
 
-    migrateAllToolConfigs(fs as unknown as FsReader, ["bun"]);
+    migrateToolConfigs(fs as unknown as FsReader, ["bun"]);
 
     // Check that we didn't overwrite the existing config
     const content = fs.readFileSync(

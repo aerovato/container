@@ -6,7 +6,7 @@ import { HARNESS_PACKS } from "../harness-packs";
 import { TOOL_PACKS } from "../tool-packs";
 import { buildImage } from "../docker";
 import { BuildTarget } from "../types";
-import { migrateAllToolConfigs } from "../onboarding";
+import { migrateToolConfigs } from "../onboarding";
 
 type SettingsAction = "harnesses" | "tools" | "runtime" | "mounts" | "done";
 
@@ -99,7 +99,7 @@ export async function settingsCommand(
           const newTools = (selectedTools as string[]).sort();
           const addedTools = newTools.filter(t => !initialTools.includes(t));
           if (addedTools.length > 0) {
-            migrateAllToolConfigs(fs, addedTools);
+            migrateToolConfigs(fs, addedTools);
           }
           settings = {
             ...settings,

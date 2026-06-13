@@ -81,7 +81,7 @@ async function expressSetup(
   );
 
   spinner.start("Migrating harness configs");
-  const migratedCount = migrateAllConfigs(fs, harnessIds);
+  const migratedCount = migrateHarnessConfigs(fs, harnessIds);
   spinner.stop(`Migrated ${migratedCount} config items`);
 
   spinner.start("Detecting installed tooling");
@@ -89,7 +89,7 @@ async function expressSetup(
   spinner.stop(`Detected ${toolIds.length} tools`);
 
   spinner.start("Migrating tool configs");
-  const toolMigratedCount = migrateAllToolConfigs(fs, toolIds);
+  const toolMigratedCount = migrateToolConfigs(fs, toolIds);
   spinner.stop(`Migrated ${toolMigratedCount} tool config items`);
 
   spinner.start("Detecting container runtime");
@@ -106,6 +106,18 @@ async function expressSetup(
 
   clack.note(summary, "Configuration Summary", { format: line => line });
 
+  const finalSettings: Settings = {
+    ...settings,
+    enabledHarnesses: harnessIds,
+    enabledTools: toolIds,
+    runtime,
+    systemMounts: { ssh: true },
+  };
+  const finalState: StateData = { buildDirty: "harness" };
+
+  settingsStore.save(finalSettings);
+  stateStore.save(finalState);
+
   if (runtime) {
     const rt = new Runtime(executor, runtime);
     clack.log.info(`Building container image (target: full)`);
@@ -118,16 +130,7 @@ async function expressSetup(
     }
   }
 
-  return {
-    settings: {
-      ...settings,
-      enabledHarnesses: harnessIds,
-      enabledTools: toolIds,
-      runtime,
-      systemMounts: { ssh: true },
-    },
-    state: { buildDirty: "harness" },
-  };
+  return { settings: finalSettings, state: finalState };
 }
 
 async function customSetup(
@@ -145,12 +148,27 @@ async function customSetup(
   }
   const toolIds = await selectToolsInteractive(executor, settings);
   if (toolIds.length > 0) {
-    migrateAllToolConfigs(fs, toolIds);
+    const spinner = clack.spinner();
+    spinner.start("Migrating tool configs");
+    const toolMigratedCount = migrateToolConfigs(fs, toolIds);
+    spinner.stop(`Migrated ${toolMigratedCount} tool config items`);
   }
   const runtime = await selectRuntimeInteractive(executor, settings.runtime);
   const sshMount = await confirmSSHMount(settings);
 
   clack.note("Onboarding complete.", "Done", { format: line => line });
+
+  const finalSettings: Settings = {
+    ...settings,
+    enabledHarnesses: harnessIds,
+    enabledTools: toolIds,
+    runtime,
+    systemMounts: { ssh: sshMount },
+  };
+  const finalState: StateData = { buildDirty: "harness" };
+
+  settingsStore.save(finalSettings);
+  stateStore.save(finalState);
 
   if (runtime) {
     const shouldBuild = await clack.confirm({
@@ -169,16 +187,7 @@ async function customSetup(
     }
   }
 
-  return {
-    settings: {
-      ...settings,
-      enabledHarnesses: harnessIds,
-      enabledTools: toolIds,
-      runtime,
-      systemMounts: { ssh: sshMount },
-    },
-    state: { buildDirty: "harness" },
-  };
+  return { settings: finalSettings, state: finalState };
 }
 
 async function selectToolsInteractive(
@@ -405,7 +414,7 @@ export function detectTools(executor: Executor): string[] {
   return detected;
 }
 
-function migrateAllConfigs(fs: FsReader, harnessIds: string[]): number {
+function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
   let count = 0;
 
   for (const id of harnessIds) {
@@ -435,7 +444,7 @@ function migrateAllConfigs(fs: FsReader, harnessIds: string[]): number {
   return count;
 }
 
-export function migrateAllToolConfigs(fs: FsReader, toolIds: string[]): number {
+export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
   let count = 0;
 
   for (const id of toolIds) {

@@ -88,9 +88,6 @@ async function main(): Promise<void> {
       onboardingStatus,
     );
     settings = onboardResult.settings;
-    settingsStore.save(settings);
-    stateStore.save(onboardResult.state);
-
     if (parsed.command === "init") return;
   }
 
