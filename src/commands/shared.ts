@@ -12,7 +12,7 @@ export function resolveProjectPath(projectPath: string | undefined): string {
   return path.resolve(projectPath);
 }
 
-export function resolveContainerTarget(target: string | undefined): string {
+export function resolveContainerName(target: string | undefined): string {
   return generateContainerName(resolveProjectPath(target));
 }
 
