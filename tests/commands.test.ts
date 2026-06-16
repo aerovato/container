@@ -14,6 +14,9 @@ import { stopCommand } from "../src/commands/stop";
 import { removeCommand } from "../src/commands/remove";
 import { listCommand } from "../src/commands/list";
 import { settingsCommand } from "../src/commands/settings";
+import { createCommand } from "../src/commands/create";
+import { attachCommand } from "../src/commands/attach";
+import { runCommand } from "../src/commands/run";
 import * as clack from "@clack/prompts";
 import {
   resolveProjectPath,
@@ -193,6 +196,173 @@ describe("listCommand", () => {
     listCommand(runtime);
     const listCall = calls.find(c => c.args[0] === "ps");
     expect(listCall).toBeDefined();
+  });
+});
+
+function setupSessionStores(): {
+  settingsStore: SettingsStore;
+  stateStore: StateStore;
+} {
+  fs.mkdirSync(APPDATA_DIR, { recursive: true });
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
+  fs.mkdirSync("/project", { recursive: true });
+  const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
+  const stateStore = new StateStore(fsReader, STATE_PATH);
+  settingsStore.save({
+    runtime: "docker",
+    enabledHarnesses: [],
+    systemMounts: { ssh: false },
+  });
+  return { settingsStore, stateStore };
+}
+
+describe("createCommand", () => {
+  it("creates container when it does not exist", async () => {
+    const { settingsStore, stateStore } = setupSessionStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0 });
+    enqueue({ status: 1 });
+    enqueue({ status: 0 });
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    await createCommand(
+      runtime,
+      settingsStore,
+      stateStore,
+      fsReader,
+      "/project",
+      ["-p", "8080:8080"],
+    );
+    const runCalls = calls.filter(c => c.args[0] === "run");
+    expect(runCalls).toHaveLength(1);
+    expect(runCalls[0].args).toContain("-p");
+    expect(runCalls[0].args).toContain("8080:8080");
+    expect(exitSpy).not.toHaveBeenCalled();
+    exitSpy.mockRestore();
+  });
+
+  it("errors if container already exists", async () => {
+    const { settingsStore, stateStore } = setupSessionStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    await expect(
+      createCommand(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        "/project",
+        [],
+      ),
+    ).rejects.toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+});
+
+describe("attachCommand", () => {
+  it("errors if container does not exist", () => {
+    const { settingsStore } = setupSessionStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 1 });
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    expect(() =>
+      attachCommand(
+        runtime,
+        mockExecutor,
+        settingsStore,
+        fsReader,
+        "/project",
+        [],
+      ),
+    ).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+
+  it("starts if stopped then execs", () => {
+    const { settingsStore } = setupSessionStores();
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0 });
+    enqueue({ status: 0, stdout: "false\n" });
+    enqueue({ status: 0 });
+
+    attachCommand(runtime, mockExecutor, settingsStore, fsReader, "/project", [
+      "-e",
+      "FOO=bar",
+    ]);
+    const startCalls = calls.filter(c => c.args[0] === "start");
+    const execCalls = calls.filter(c => c.args[0] === "exec");
+    expect(startCalls).toHaveLength(1);
+    expect(execCalls).toHaveLength(1);
+    expect(execCalls[0].args).toContain("FOO=bar");
+  });
+});
+
+describe("runCommand flag routing", () => {
+  it("on create: routes cliFlags to docker run, not exec", async () => {
+    const { settingsStore, stateStore } = setupSessionStores();
+    stateStore.save({ lastUpdateCheck: Date.now() });
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0 });
+    enqueue({ status: 1 });
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
+    enqueue({ status: 0, stdout: "true\n" });
+    enqueue({ status: 0 });
+
+    await runCommand(
+      runtime,
+      mockExecutor,
+      settingsStore,
+      stateStore,
+      fsReader,
+      "/project",
+      ["-p", "8080:8080"],
+    );
+    const runCalls = calls.filter(c => c.args[0] === "run");
+    const execCalls = calls.filter(c => c.args[0] === "exec");
+    expect(runCalls).toHaveLength(1);
+    expect(runCalls[0].args).toContain("-p");
+    expect(runCalls[0].args).toContain("8080:8080");
+    expect(execCalls).toHaveLength(1);
+    expect(execCalls[0].args).not.toContain("-p");
+  });
+
+  it("on attach: routes cliFlags to docker exec", async () => {
+    const { settingsStore, stateStore } = setupSessionStores();
+    stateStore.save({ lastUpdateCheck: Date.now() });
+    const runtime = new Runtime(mockExecutor, "docker");
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
+    enqueue({ status: 0, stdout: "true\n" });
+    enqueue({ status: 0 });
+
+    await runCommand(
+      runtime,
+      mockExecutor,
+      settingsStore,
+      stateStore,
+      fsReader,
+      "/project",
+      ["-e", "FOO=bar"],
+    );
+    const runCalls = calls.filter(c => c.args[0] === "run");
+    const execCalls = calls.filter(c => c.args[0] === "exec");
+    expect(runCalls).toHaveLength(0);
+    expect(execCalls).toHaveLength(1);
+    expect(execCalls[0].args).toContain("FOO=bar");
   });
 });
 

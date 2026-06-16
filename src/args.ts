@@ -5,6 +5,8 @@ const BUILD_TARGETS: BuildTarget[] = ["full", "tools", "harness", "user"];
 
 export type ParsedArgs =
   | { command: "run"; target: string | undefined; cliFlags: string[] }
+  | { command: "create"; target: string | undefined; cliFlags: string[] }
+  | { command: "attach"; target: string | undefined; cliFlags: string[] }
   | { command: "build"; target: BuildTarget }
   | { command: "init" }
   | { command: "settings" }
@@ -20,7 +22,9 @@ Manage isolated containers for running coding tools on different projects.
 
 Commands:
     (none)              Start container for current directory (default)
-    run                 Start container for specified project or container
+    run [PATH]          Create (if needed) and attach to the container
+    create [PATH]       Create the container without attaching
+    attach [PATH]       Attach to an existing container without creating
     build [TARGET]      Build the Docker image (default: full)
     init                Trigger onboarding
     stop                Stop the container for this project
@@ -42,6 +46,8 @@ Examples:
     container run /path/to/project         # Start container for specific project
     container run /path -- -p 8080:80      # Pass runtime flags for port mapping
     container run -- -e FOO=bar            # Pass env vars (uses current directory)
+    container create -- -p 8080:80         # Create container with port mapping
+    container attach                       # Attach to current dir's container
     container build                        # Build all stages from scratch
     container build full                   # Build all stages from scratch
     container build tools                 # Rebuild from Tools stage
@@ -63,6 +69,8 @@ function fatal(msg: string[]): never {
 
 const VALID_COMMANDS = [
   "run",
+  "create",
+  "attach",
   "build",
   "init",
   "settings",
@@ -118,13 +126,15 @@ export function parseArgs(raw: string[]): ParsedArgs {
       }
       return { command } as ParsedArgs;
     }
-    case "run": {
+    case "run":
+    case "create":
+    case "attach": {
       const { before, after } = splitAtSeparator(remaining);
       if (before.length > 1) {
         fatal([`Unexpected argument: ${before[1]}`]);
       }
       return {
-        command: "run",
+        command,
         target: before[0] || undefined,
         cliFlags: after,
       };

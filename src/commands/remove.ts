@@ -1,12 +1,12 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
-import { resolveContainerTarget } from "./shared";
+import { resolveContainerName } from "./shared";
 
 export function removeCommand(
   runtime: Runtime,
   target: string | undefined,
 ): void {
-  const containerName = resolveContainerTarget(target);
+  const containerName = resolveContainerName(target);
 
   if (!runtime.containerExists(containerName)) {
     clack.log.error(`Container does not exist: ${containerName}`);
