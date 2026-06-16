@@ -22,6 +22,8 @@ import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
 import { parseArgs } from "./args";
 import { buildCommand } from "./commands/build";
 import { runCommand } from "./commands/run";
+import { createCommand } from "./commands/create";
+import { attachCommand } from "./commands/attach";
 import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
@@ -133,6 +135,26 @@ async function main(): Promise<void> {
         executor,
         settingsStore,
         stateStore,
+        fsReader,
+        parsed.target,
+        parsed.cliFlags,
+      );
+      return;
+    case "create":
+      await createCommand(
+        runtime,
+        settingsStore,
+        stateStore,
+        fsReader,
+        parsed.target,
+        parsed.cliFlags,
+      );
+      return;
+    case "attach":
+      attachCommand(
+        runtime,
+        executor,
+        settingsStore,
         fsReader,
         parsed.target,
         parsed.cliFlags,

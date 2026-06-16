@@ -120,6 +120,76 @@ describe("parseArgs", () => {
     });
   });
 
+  describe("create", () => {
+    it("parses with path only", () => {
+      expect(parseArgs(["create", "/path/to/project"])).toEqual({
+        command: "create",
+        target: "/path/to/project",
+        cliFlags: [],
+      });
+    });
+
+    it("parses with path and docker flags", () => {
+      expect(
+        parseArgs(["create", "/path/to/project", "--", "-p", "8080:80"]),
+      ).toEqual({
+        command: "create",
+        target: "/path/to/project",
+        cliFlags: ["-p", "8080:80"],
+      });
+    });
+
+    it("parses with only docker flags (undefined target)", () => {
+      expect(parseArgs(["create", "--", "-e", "FOO=bar"])).toEqual({
+        command: "create",
+        target: undefined,
+        cliFlags: ["-e", "FOO=bar"],
+      });
+    });
+
+    it("rejects extra positional args", () => {
+      expect(() => parseArgs(["create", "/path", "extra"])).toThrow(
+        "process.exit",
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe("attach", () => {
+    it("parses with path only", () => {
+      expect(parseArgs(["attach", "/path/to/project"])).toEqual({
+        command: "attach",
+        target: "/path/to/project",
+        cliFlags: [],
+      });
+    });
+
+    it("parses with path and docker flags", () => {
+      expect(
+        parseArgs(["attach", "/path/to/project", "--", "-e", "FOO=bar"]),
+      ).toEqual({
+        command: "attach",
+        target: "/path/to/project",
+        cliFlags: ["-e", "FOO=bar"],
+      });
+    });
+
+    it("parses with only docker flags (undefined target)", () => {
+      expect(parseArgs(["attach", "--", "-e", "FOO=bar"])).toEqual({
+        command: "attach",
+        target: undefined,
+        cliFlags: ["-e", "FOO=bar"],
+      });
+    });
+
+    it("rejects extra positional args", () => {
+      expect(() => parseArgs(["attach", "/path", "extra"])).toThrow(
+        "process.exit",
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe("stop", () => {
     it("parses with path", () => {
       expect(parseArgs(["stop", "/path/to/project"])).toEqual({

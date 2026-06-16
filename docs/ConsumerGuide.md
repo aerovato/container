@@ -120,7 +120,9 @@ Edit this file directly. After changing `dockerfileCore`, `enabledHarnesses`, or
 ```bash
 container                           # Enter container for current directory
 container run /path/to/project      # Specific project
-container run /path -- -p 8080:80   # With runtime flags
+container run [/path] -- -p 8080:80 # With runtime flags (on create)
+container create [/path]            # Create without attaching
+container attach [/path]            # Attach to existing container
 container build [full|tools|harness|user]
 container init                      # Re-run onboarding / settings
 container stop [path]
