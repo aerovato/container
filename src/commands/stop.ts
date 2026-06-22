@@ -1,9 +1,9 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { ContainerClient } from "../container-client";
 import { resolveContainerName } from "../platform/paths";
 
 export function stopCommand(
-  runtime: Runtime,
+  runtime: ContainerClient,
   target: string | undefined,
 ): void {
   const containerName = resolveContainerName(target);

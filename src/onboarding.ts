@@ -7,9 +7,12 @@ import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
 import { buildImage } from "./docker";
-import { Runtime } from "./runtime";
-import { Executor } from "./platform/shell";
-import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
+import { ContainerClient } from "./container-client";
+import {
+  Executor,
+  getDefaultRuntime,
+  getRuntimeAvailability,
+} from "./platform/shell";
 
 export const LATEST_ONBOARDING_VERSION = 4;
 
@@ -77,10 +80,8 @@ async function expressSetup(
 ): Promise<{ settings: Settings; state: StateData }> {
   const spinner = clack.spinner();
 
-  const detectionRuntime = new Runtime(executor, "docker");
-
   spinner.start("Detecting installed harnesses");
-  const harnessIds = detectHarnesses(detectionRuntime);
+  const harnessIds = detectHarnesses(executor);
   spinner.stop(
     `Detected ${harnessIds.length} harnesses: ${harnessIds.join(", ") || "none"}`,
   );
@@ -90,7 +91,7 @@ async function expressSetup(
   spinner.stop(`Migrated ${migratedCount} config items`);
 
   spinner.start("Detecting installed tooling");
-  const toolIds = detectTools(detectionRuntime);
+  const toolIds = detectTools(executor);
   spinner.stop(`Detected ${toolIds.length} tools`);
 
   spinner.start("Migrating tool configs");
@@ -124,7 +125,7 @@ async function expressSetup(
   stateStore.save(finalState);
 
   if (runtime) {
-    const rt = new Runtime(executor, runtime);
+    const rt = new ContainerClient(executor, runtime);
     clack.log.info(`Building container image (target: full)`);
     const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
     if (!buildResult.ok) {
@@ -180,7 +181,7 @@ async function customSetup(
       message: "Build the container image now? (Recommended)",
     });
     if (!clack.isCancel(shouldBuild) && shouldBuild) {
-      const rt = new Runtime(executor, runtime);
+      const rt = new ContainerClient(executor, runtime);
       clack.log.info(`Building container image (target: full)`);
       const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
       if (!buildResult.ok) {
@@ -202,7 +203,7 @@ async function selectToolsInteractive(
   const allIds = Object.keys(TOOL_PACKS);
   const currentIds =
     settings.enabledTools === undefined
-      ? detectTools(new Runtime(executor, "docker"))
+      ? detectTools(executor)
       : settings.enabledTools;
 
   const selectedIds = await clack.multiselect({
@@ -232,7 +233,7 @@ async function selectHarnessesInteractive(
   const allIds = Object.keys(HARNESS_PACKS);
   const currentIds =
     settings.enabledHarnesses === undefined
-      ? detectHarnesses(new Runtime(executor, "docker"))
+      ? detectHarnesses(executor)
       : settings.enabledHarnesses;
 
   const selectedIds = await clack.multiselect({
@@ -383,11 +384,11 @@ async function selectRuntimeInteractive(
   return selected;
 }
 
-function detectHarnesses(runtime: Runtime): string[] {
+function detectHarnesses(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-    if (pack.shouldEnable(runtime)) {
+    if (pack.shouldEnable(executor)) {
       detected.push(id);
     }
   }
@@ -395,11 +396,11 @@ function detectHarnesses(runtime: Runtime): string[] {
   return detected;
 }
 
-export function detectTools(runtime: Runtime): string[] {
+export function detectTools(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(TOOL_PACKS)) {
-    if (pack.shouldEnable(runtime)) {
+    if (pack.shouldEnable(executor)) {
       detected.push(id);
     }
   }

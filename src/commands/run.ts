@@ -1,6 +1,5 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
-import { Executor } from "../platform/shell";
+import { ContainerClient } from "../container-client";
 import { SettingsStore, StateStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { resolveTarget, ensureImageReady } from "./shared";
@@ -10,8 +9,7 @@ import pkg from "../../package.json";
 import { maybeCheckForUpdate } from "../update-check";
 
 export async function runCommand(
-  runtime: Runtime,
-  executor: Executor,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,
@@ -34,9 +32,9 @@ export async function runCommand(
 
   if (!runtime.containerExists(resolved.containerName)) {
     createContainer(runtime, settings, resolved, cliFlags);
-    attachToContainer(runtime, executor, settings, resolved, []);
+    attachToContainer(runtime, settings, resolved, []);
   } else {
-    attachToContainer(runtime, executor, settings, resolved, cliFlags);
+    attachToContainer(runtime, settings, resolved, cliFlags);
   }
 
   if (updateInfo) {

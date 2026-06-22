@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { ContainerClient } from "../container-client";
 import { SettingsStore, StateStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { resolveTarget, ensureImageReady, ResolvedTarget } from "./shared";
@@ -7,7 +7,7 @@ import { Settings } from "../types";
 import { createNewContainer } from "../container";
 
 export function createContainer(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settings: Settings,
   resolved: ResolvedTarget,
   cliFlags: string[],
@@ -30,7 +30,7 @@ export function createContainer(
 }
 
 export async function createCommand(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,

@@ -6,8 +6,8 @@ import * as clack from "@clack/prompts";
 import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
-import { Runtime } from "./runtime";
-import { Executor, createExecutor } from "./platform/shell";
+import { ContainerClient } from "./container-client";
+import { Executor, createExecutor, getDefaultRuntime } from "./platform/shell";
 import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
 import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
@@ -20,7 +20,6 @@ import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
-import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
 
 const executor: Executor = createExecutor();
@@ -94,7 +93,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const runtime = new Runtime(executor, settings.runtime);
+  const runtime = new ContainerClient(executor, settings.runtime);
 
   if (!runtime.daemonRunning()) {
     clack.log.error(
@@ -103,7 +102,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  stopOrphanedContainers(executor, runtime);
+  stopOrphanedContainers(runtime);
 
   switch (parsed.command) {
     case "list":
@@ -124,7 +123,6 @@ async function main(): Promise<void> {
     case "run":
       await runCommand(
         runtime,
-        executor,
         settingsStore,
         stateStore,
         fsReader,
@@ -145,7 +143,6 @@ async function main(): Promise<void> {
     case "attach":
       attachCommand(
         runtime,
-        executor,
         settingsStore,
         fsReader,
         parsed.target,

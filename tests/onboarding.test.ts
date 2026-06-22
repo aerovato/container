@@ -11,7 +11,6 @@ import {
   migrateToolConfigs,
 } from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
-import { Runtime } from "../src/runtime";
 import { Executor } from "../src/platform/shell";
 
 vi.mock("fs");
@@ -59,8 +58,6 @@ describe("detectHarnesses (via runtime)", () => {
     },
   };
 
-  const runtime = new Runtime(mockExecutor, "docker");
-
   beforeEach(() => {
     calls.length = 0;
     queue.length = 0;
@@ -75,7 +72,7 @@ describe("detectHarnesses (via runtime)", () => {
 
     const detected: string[] = [];
     for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-      if (pack.shouldEnable(runtime)) detected.push(id);
+      if (pack.shouldEnable(mockExecutor)) detected.push(id);
     }
 
     expect(detected).toEqual([ids[0]]);
@@ -89,7 +86,7 @@ describe("detectHarnesses (via runtime)", () => {
 
     const detected: string[] = [];
     for (const [, pack] of Object.entries(HARNESS_PACKS)) {
-      if (pack.shouldEnable(runtime)) detected.push("x");
+      if (pack.shouldEnable(mockExecutor)) detected.push("x");
     }
 
     expect(detected).toEqual([]);
@@ -176,7 +173,7 @@ describe("detectTools", () => {
         };
       },
     };
-    const detected = detectTools(new Runtime(mockExecutor, "docker"));
+    const detected = detectTools(mockExecutor);
     expect(detected).toEqual([
       "python",
       "bun",

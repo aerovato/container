@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { ContainerClient } from "../container-client";
 import { SettingsStore, StateStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { RuntimeBin } from "../types";
@@ -16,7 +16,7 @@ function formatList(items: string[]): string {
 }
 
 export async function settingsCommand(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,

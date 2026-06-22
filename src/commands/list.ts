@@ -1,7 +1,7 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { ContainerClient } from "../container-client";
 
-export function listCommand(runtime: Runtime): void {
+export function listCommand(runtime: ContainerClient): void {
   clack.log.info("Containers:");
   runtime.listContainers(
     "name=container-",

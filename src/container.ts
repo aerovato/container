@@ -1,5 +1,4 @@
-import { Runtime } from "./runtime";
-import { Executor } from "./platform/shell";
+import { ContainerClient } from "./container-client";
 import { CONFIGS_DIR, homeDir } from "./platform/paths";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
@@ -42,7 +41,7 @@ export function getMounts(
 }
 
 export function createNewContainer(
-  runtime: Runtime,
+  runtime: ContainerClient,
   containerName: string,
   projectName: string,
   projectPath: string,
@@ -70,7 +69,7 @@ export function createNewContainer(
 }
 
 export function execInteractive(
-  runtime: Runtime,
+  runtime: ContainerClient,
   containerName: string,
   projectName: string,
   settings: Settings,
@@ -92,49 +91,18 @@ export function execInteractive(
   ]);
 }
 
-export function getOtherSessionCount(
-  executor: Executor,
-  containerName: string,
-): number {
-  const result = executor.spawnSync("ps", ["ax", "-o", "command="], {
-    encoding: "utf-8",
-  });
-  if (result.status !== 0) return 0;
-
-  const lines = result.stdout.toString().split("\n");
-  let count = 0;
-
-  for (const line of lines) {
-    const hasExec = line.includes(" exec ");
-    const hasIt = line.includes("-it");
-    const hasContainerName = line.includes(containerName);
-    const hasBash = line.includes("/bin/bash");
-
-    if (hasExec && hasIt && hasContainerName && hasBash) {
-      count++;
-    }
-  }
-
-  return count;
-}
-
 export function stopContainerIfLastSession(
-  executor: Executor,
-  runtime: Runtime,
+  runtime: ContainerClient,
   containerName: string,
 ): void {
-  const otherSessions = getOtherSessionCount(executor, containerName);
-  if (otherSessions === 0) {
+  if (runtime.attachedSessionCount(containerName) === 0) {
     runtime.stop(containerName);
   }
 }
 
 const ORPHAN_THRESHOLD_MS = 5 * 60 * 1000;
 
-export function stopOrphanedContainers(
-  executor: Executor,
-  runtime: Runtime,
-): void {
+export function stopOrphanedContainers(runtime: ContainerClient): void {
   const containers = runtime.listRunningManagedContainers();
   const now = Date.now();
 
@@ -145,6 +113,6 @@ export function stopOrphanedContainers(
     const startedMs = new Date(startedAt).getTime();
     if (now - startedMs < ORPHAN_THRESHOLD_MS) continue;
 
-    stopContainerIfLastSession(executor, runtime, name);
+    stopContainerIfLastSession(runtime, name);
   }
 }

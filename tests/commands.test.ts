@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fs, vol } from "memfs";
-import { Runtime } from "../src/runtime";
+import { ContainerClient } from "../src/container-client";
 import { Executor } from "../src/platform/shell";
 import { SettingsStore, StateStore } from "../src/config";
 import {
@@ -22,7 +22,8 @@ import {
   resolveProjectPath,
   resolveContainerName,
 } from "../src/platform/paths";
-import { getBuildDirty, getDefaultRuntime } from "../src/commands/shared";
+import { getBuildDirty } from "../src/commands/shared";
+import { getDefaultRuntime } from "../src/platform/shell";
 import { FsReader, Filesystem } from "../src/platform/fs";
 
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
@@ -66,7 +67,7 @@ describe("buildCommand", () => {
   it("calls buildImage and prints success", () => {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.mkdirSync(TEMP_DIR, { recursive: true });
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
     const stateStore = new StateStore(fsReader, STATE_PATH);
     enqueue({ status: 0 });
@@ -85,7 +86,7 @@ describe("buildCommand", () => {
   it("calls process.exit on build failure", () => {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.mkdirSync(TEMP_DIR, { recursive: true });
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
     const stateStore = new StateStore(fsReader, STATE_PATH);
     enqueue({ status: 1 });
@@ -104,7 +105,7 @@ describe("buildCommand", () => {
 
 describe("stopCommand", () => {
   it("exits when container does not exist", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 1 });
 
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -116,7 +117,7 @@ describe("stopCommand", () => {
   });
 
   it("stops running container", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "true\n" });
     enqueue({ status: 0 });
@@ -132,7 +133,7 @@ describe("stopCommand", () => {
   });
 
   it("warns when container is not running", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "false\n" });
 
@@ -148,7 +149,7 @@ describe("stopCommand", () => {
 
 describe("removeCommand", () => {
   it("exits when container does not exist", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 1 });
 
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -160,7 +161,7 @@ describe("removeCommand", () => {
   });
 
   it("stops then removes running container", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "true\n" });
     enqueue({ status: 0 });
@@ -174,7 +175,7 @@ describe("removeCommand", () => {
   });
 
   it("removes non-running container without stopping", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "false\n" });
     enqueue({ status: 0 });
@@ -189,7 +190,7 @@ describe("removeCommand", () => {
 
 describe("listCommand", () => {
   it("delegates to runtime.listContainers", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
 
     listCommand(runtime);
@@ -218,7 +219,7 @@ function setupSessionStores(): {
 describe("createCommand", () => {
   it("creates container when it does not exist", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 1 });
     enqueue({ status: 0 });
@@ -244,7 +245,7 @@ describe("createCommand", () => {
 
   it("errors if container already exists", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0 });
 
@@ -269,21 +270,14 @@ describe("createCommand", () => {
 describe("attachCommand", () => {
   it("errors if container does not exist", () => {
     const { settingsStore } = setupSessionStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 1 });
 
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
     expect(() =>
-      attachCommand(
-        runtime,
-        mockExecutor,
-        settingsStore,
-        fsReader,
-        "/project",
-        [],
-      ),
+      attachCommand(runtime, settingsStore, fsReader, "/project", []),
     ).toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
@@ -291,12 +285,12 @@ describe("attachCommand", () => {
 
   it("starts if stopped then execs", () => {
     const { settingsStore } = setupSessionStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "false\n" });
     enqueue({ status: 0 });
 
-    attachCommand(runtime, mockExecutor, settingsStore, fsReader, "/project", [
+    attachCommand(runtime, settingsStore, fsReader, "/project", [
       "-e",
       "FOO=bar",
     ]);
@@ -312,7 +306,7 @@ describe("runCommand flag routing", () => {
   it("on create: routes cliFlags to docker run, not exec", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
     stateStore.save({ lastUpdateCheck: Date.now() });
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 1 });
     enqueue({ status: 0 });
@@ -320,15 +314,10 @@ describe("runCommand flag routing", () => {
     enqueue({ status: 0, stdout: "true\n" });
     enqueue({ status: 0 });
 
-    await runCommand(
-      runtime,
-      mockExecutor,
-      settingsStore,
-      stateStore,
-      fsReader,
-      "/project",
-      ["-p", "8080:8080"],
-    );
+    await runCommand(runtime, settingsStore, stateStore, fsReader, "/project", [
+      "-p",
+      "8080:8080",
+    ]);
     const runCalls = calls.filter(c => c.args[0] === "run");
     const execCalls = calls.filter(c => c.args[0] === "exec");
     expect(runCalls).toHaveLength(1);
@@ -341,22 +330,17 @@ describe("runCommand flag routing", () => {
   it("on attach: routes cliFlags to docker exec", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
     stateStore.save({ lastUpdateCheck: Date.now() });
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0 });
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "true\n" });
     enqueue({ status: 0 });
 
-    await runCommand(
-      runtime,
-      mockExecutor,
-      settingsStore,
-      stateStore,
-      fsReader,
-      "/project",
-      ["-e", "FOO=bar"],
-    );
+    await runCommand(runtime, settingsStore, stateStore, fsReader, "/project", [
+      "-e",
+      "FOO=bar",
+    ]);
     const runCalls = calls.filter(c => c.args[0] === "run");
     const execCalls = calls.filter(c => c.args[0] === "exec");
     expect(runCalls).toHaveLength(0);
@@ -466,7 +450,7 @@ describe("settingsCommand", () => {
 
   it("exits immediately when done is selected without changes", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select).mockResolvedValueOnce("done");
 
@@ -481,7 +465,7 @@ describe("settingsCommand", () => {
 
   it("updates enabledHarnesses and skips rebuild", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("harnesses")
@@ -499,7 +483,7 @@ describe("settingsCommand", () => {
 
   it("triggers harness rebuild when selected", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     enqueue({ status: 0 });
     enqueue({ status: 0 });
@@ -518,7 +502,7 @@ describe("settingsCommand", () => {
 
   it("updates runtime", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("runtime")
@@ -535,7 +519,7 @@ describe("settingsCommand", () => {
 
   it("updates system mounts", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("mounts")
@@ -552,7 +536,7 @@ describe("settingsCommand", () => {
 
   it("handles cancel on main menu", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select).mockResolvedValueOnce(Symbol("cancel"));
     vi.mocked(clack.isCancel).mockReturnValueOnce(true);
@@ -564,7 +548,7 @@ describe("settingsCommand", () => {
 
   it("does not offer rebuild when harnesses unchanged", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("runtime")
@@ -582,7 +566,7 @@ describe("settingsCommand", () => {
 
   it("updates enabledTools and saves buildDirty: tools when skipped", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("tools")

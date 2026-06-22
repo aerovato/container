@@ -1,7 +1,7 @@
 import { Result, RuntimeBin } from "./types";
 import { Executor } from "./platform/shell";
 
-export class Runtime {
+export class ContainerClient {
   constructor(
     private executor: Executor,
     private bin: RuntimeBin,
@@ -138,9 +138,15 @@ export class Runtime {
     return result.status === 0;
   }
 
-  commandExists(cmd: string): boolean {
-    const bin = process.platform === "win32" ? "where" : "which";
-    const result = this.executor.spawnSync(bin, [cmd], { stdio: "pipe" });
-    return result.status === 0;
+  attachedSessionCount(name: string): number {
+    const result = this.executor.spawnSync(this.bin, ["top", name], {
+      stdio: "pipe",
+    });
+    if (result.status !== 0) return 0;
+    let count = 0;
+    for (const line of result.stdout.toString().split("\n")) {
+      if (line.includes("bash")) count++;
+    }
+    return count;
   }
 }

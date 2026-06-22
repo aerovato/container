@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "./runtime";
+import { ContainerClient } from "./container-client";
 import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import {
@@ -30,7 +30,7 @@ export const IMAGE_TAG = "latest";
 export const CONTAINER_IMAGE = `${USER_IMAGE}:${IMAGE_TAG}`;
 
 export function buildImage(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,

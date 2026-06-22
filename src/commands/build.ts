@@ -1,12 +1,12 @@
 import * as clack from "@clack/prompts";
-import { Runtime } from "../runtime";
+import { ContainerClient } from "../container-client";
 import { SettingsStore, StateStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { buildImage } from "../docker";
 import { BuildTarget } from "../types";
 
 export function buildCommand(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,
