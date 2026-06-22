@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
 import type fs from "fs";
 import { isWindows } from "./os";
 import { APPDATA_DIR, CONFIGS_DIR, TEMP_DIR } from "./paths";

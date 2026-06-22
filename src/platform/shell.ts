@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
 import { spawnSync } from "child_process";
 import { isWindows, isLinux } from "./os";
 import { RuntimeBin } from "../types";
