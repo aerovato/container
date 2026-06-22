@@ -1,6 +1,7 @@
 import path from "path";
 import os from "os";
 import crypto from "crypto";
+import { isWindows } from "./os";
 
 export const APPDATA_DIR = path.join(os.homedir(), ".code-container");
 export const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
@@ -37,7 +38,7 @@ export function resolveProjectPath(projectPath: string | undefined): string {
 export const CONTAINER_PREFIX = "container";
 
 export function generateContainerName(projectPath: string): string {
-  const normalizedPath = projectPath.replace(/\/$/, "");
+  const normalizedPath = projectPath.replace(/[\\/]+$/, "");
   const projectName = path.basename(normalizedPath);
   const pathHash = crypto
     .createHash("sha1")
@@ -49,4 +50,18 @@ export function generateContainerName(projectPath: string): string {
 
 export function resolveContainerName(target: string | undefined): string {
   return generateContainerName(resolveProjectPath(target));
+}
+
+export function buildBindMount(
+  source: string,
+  dest: string,
+  mode?: string,
+): string {
+  const src = normalizePath(source);
+  const dst = normalizePath(dest);
+  return mode !== undefined ? `${src}:${dst}:${mode}` : `${src}:${dst}`;
+}
+
+function normalizePath(p: string): string {
+  return isWindows() ? p.replace(/\\/g, "/") : p;
 }

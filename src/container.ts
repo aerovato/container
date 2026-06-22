@@ -1,5 +1,5 @@
 import { ContainerClient } from "./container-client";
-import { CONFIGS_DIR, homeDir } from "./platform/paths";
+import { CONFIGS_DIR, homeDir, buildBindMount } from "./platform/paths";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
@@ -13,14 +13,14 @@ export function getMounts(
   const home = homeDir();
   const mounts: string[] = [];
 
-  mounts.push(`${projectPath}:/root/${projectName}`);
+  mounts.push(buildBindMount(projectPath, `/root/${projectName}`));
 
   const enabledIds = settings.enabledHarnesses ?? [];
   for (const id of enabledIds) {
     const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
     if (!pack) continue;
     for (const c of pack.config) {
-      mounts.push(`${CONFIGS_DIR}/${c.config}:${c.mount}`);
+      mounts.push(buildBindMount(`${CONFIGS_DIR}/${c.config}`, c.mount));
     }
   }
 
@@ -29,12 +29,12 @@ export function getMounts(
     const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
     if (!pack) continue;
     for (const c of pack.config) {
-      mounts.push(`${CONFIGS_DIR}/${c.config}:${c.mount}`);
+      mounts.push(buildBindMount(`${CONFIGS_DIR}/${c.config}`, c.mount));
     }
   }
 
   if (settings.systemMounts?.ssh === true) {
-    mounts.push(`${home}/.ssh:/root/.ssh:ro`);
+    mounts.push(buildBindMount(`${home}/.ssh`, "/root/.ssh", "ro"));
   }
 
   return mounts;

@@ -15,6 +15,7 @@ import {
 } from "../src/platform/paths";
 import { SettingsStore, StateStore } from "../src/config";
 import { buildImage } from "../src/docker";
+import { buildBindMount } from "../src/platform/paths";
 import {
   generateDockerfileCore,
   resolveCoreConfig,
@@ -543,6 +544,32 @@ describe("generateDockerfileHarness", () => {
     expect(result).toBe(
       "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
     );
+  });
+});
+
+describe("buildBindMount", () => {
+  it("joins source and dest with colon", () => {
+    expect(buildBindMount("/home/foo", "/root/foo")).toBe(
+      "/home/foo:/root/foo",
+    );
+  });
+
+  it("appends mode when provided", () => {
+    expect(buildBindMount("/home/foo", "/root/foo", "ro")).toBe(
+      "/home/foo:/root/foo:ro",
+    );
+  });
+
+  it("normalizes backslashes to forward slashes on windows", () => {
+    const original = process.platform;
+    Object.defineProperty(process, "platform", { value: "win32" });
+    try {
+      expect(buildBindMount("C:\\Users\\foo", "/root/foo")).toBe(
+        "C:/Users/foo:/root/foo",
+      );
+    } finally {
+      Object.defineProperty(process, "platform", { value: original });
+    }
   });
 });
 
