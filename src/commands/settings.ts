@@ -1,6 +1,7 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
-import { SettingsStore, StateStore, FsReader } from "../config";
+import { SettingsStore, StateStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { RuntimeBin } from "../types";
 import { HARNESS_PACKS } from "../harness-packs";
 import { TOOL_PACKS } from "../tool-packs";
@@ -18,7 +19,7 @@ export async function settingsCommand(
   runtime: Runtime,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
 ): Promise<void> {
   const result = settingsStore.load();
   if (!result.ok) {

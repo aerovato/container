@@ -4,14 +4,16 @@ import os from "os";
 import { fs, vol } from "memfs";
 import { Runtime } from "../src/runtime";
 import { Executor } from "../src/platform/shell";
-import { APPDATA_DIR, TEMP_DIR } from "../src/platform/paths";
-import { SettingsStore, StateStore, FsReader } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import {
+  APPDATA_DIR,
+  TEMP_DIR,
   generateContainerName,
   CORE_DOCKERFILE_PATH,
   TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
 } from "../src/platform/paths";
+import { SettingsStore, StateStore } from "../src/config";
 import { buildImage } from "../src/docker";
 import {
   generateDockerfileCore,
@@ -60,7 +62,7 @@ function reset() {
   queue.length = 0;
 }
 
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
   reset();

@@ -3,7 +3,7 @@ import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
 import { CONFIGS_DIR, expandHomePath } from "../src/platform/paths";
-import { FsReader } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   needsOnboarding,
   LATEST_ONBOARDING_VERSION,
@@ -199,7 +199,7 @@ describe("migrateToolConfigs", () => {
     // Pre-exist a different config to test non-overwriting
     fs.writeFileSync(path.join(CONFIGS_DIR, ".bunfig.toml"), "existing = true");
 
-    migrateToolConfigs(fs as unknown as FsReader, ["bun"]);
+    migrateToolConfigs(new Filesystem(fs as unknown as FsReader), ["bun"]);
 
     // Check that we didn't overwrite the existing config
     const content = fs.readFileSync(

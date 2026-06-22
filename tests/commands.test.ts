@@ -23,7 +23,7 @@ import {
   resolveContainerName,
 } from "../src/platform/paths";
 import { getBuildDirty, getDefaultRuntime } from "../src/commands/shared";
-import { FsReader } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
 const queue: Array<{
@@ -53,7 +53,7 @@ function reset() {
   queue.length = 0;
 }
 
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 vi.mock("fs");
 

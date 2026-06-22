@@ -1,6 +1,7 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
-import { SettingsStore, StateStore, FsReader } from "../config";
+import { SettingsStore, StateStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { buildImage } from "../docker";
 import { BuildTarget } from "../types";
 
@@ -8,7 +9,7 @@ export function buildCommand(
   runtime: Runtime,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: BuildTarget,
 ): void {
   clack.log.info(`Building container image (target: ${target})`);

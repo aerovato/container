@@ -1,7 +1,8 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
 import { Executor } from "../platform/shell";
-import { SettingsStore, FsReader } from "../config";
+import { SettingsStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { resolveTarget, ResolvedTarget } from "./shared";
 import { Settings } from "../types";
 import { execInteractive, stopContainerIfLastSession } from "../container";
@@ -56,7 +57,7 @@ export function attachCommand(
   runtime: Runtime,
   executor: Executor,
   settingsStore: SettingsStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: string | undefined,
   cliFlags: string[] = [],
 ): void {

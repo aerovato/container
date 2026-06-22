@@ -1,6 +1,7 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "./runtime";
-import { FsReader, SettingsStore, StateStore } from "./config";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
 import {
   APPDATA_DIR,
   USER_DOCKERFILE_PATH,
@@ -32,7 +33,7 @@ export function buildImage(
   runtime: Runtime,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: BuildTarget,
 ): Result<void> {
   const settingsResult = settingsStore.load();

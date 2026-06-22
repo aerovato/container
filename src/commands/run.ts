@@ -1,7 +1,8 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
 import { Executor } from "../platform/shell";
-import { SettingsStore, StateStore, FsReader } from "../config";
+import { SettingsStore, StateStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { resolveTarget, ensureImageReady } from "./shared";
 import { createContainer } from "./create";
 import { attachToContainer } from "./attach";
@@ -13,7 +14,7 @@ export async function runCommand(
   executor: Executor,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: string | undefined,
   cliFlags: string[] = [],
 ): Promise<void> {

@@ -1,6 +1,7 @@
 import path from "path";
 import * as clack from "@clack/prompts";
-import { StateStore, SettingsStore, FsReader } from "../config";
+import { StateStore, SettingsStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { buildImage, CONTAINER_IMAGE } from "../docker";
 import { RuntimeBin } from "../types";
 import { Runtime } from "../runtime";
@@ -14,7 +15,7 @@ export interface ResolvedTarget {
 }
 
 export function resolveTarget(
-  fs: FsReader,
+  fs: Filesystem,
   target: string | undefined,
 ): ResolvedTarget | null {
   const projectPath = resolveProjectPath(target);
@@ -58,7 +59,7 @@ export async function ensureImageReady(
   runtime: Runtime,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
 ): Promise<void> {
   const dirty = getBuildDirty(stateStore);
   if (dirty) {

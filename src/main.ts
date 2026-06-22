@@ -3,14 +3,8 @@
 // eslint-disable-next-line no-restricted-imports
 import fs from "fs";
 import * as clack from "@clack/prompts";
-import {
-  SettingsStore,
-  StateStore,
-  FsReader,
-  ensureAppdataDir,
-  ensureConfigDir,
-  ensureTempDir,
-} from "./config";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
 import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
 import { Runtime } from "./runtime";
 import { Executor, createExecutor } from "./platform/shell";
@@ -57,10 +51,10 @@ function setDefaultSettings(
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
-  const fsReader: FsReader = fs;
-  ensureAppdataDir(fsReader);
-  ensureConfigDir(fsReader);
-  ensureTempDir(fsReader);
+  const fsReader = new Filesystem(fs);
+  fsReader.ensureAppdataDir();
+  fsReader.ensureConfigDir();
+  fsReader.ensureTempDir();
   const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
   const stateStore = new StateStore(fsReader, STATE_PATH);
 

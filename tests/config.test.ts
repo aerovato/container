@@ -8,18 +8,12 @@ import {
   SETTINGS_PATH,
   STATE_PATH,
 } from "../src/platform/paths";
-import {
-  SettingsStore,
-  StateStore,
-  ensureAppdataDir,
-  ensureConfigDir,
-  ensureTempDir,
-  FsReader,
-} from "../src/config";
+import { SettingsStore, StateStore } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import { maybeCheckForUpdate } from "../src/update-check";
 
 const SETTINGS_DIR = path.dirname(SETTINGS_PATH);
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 vi.mock("fs");
 
@@ -133,21 +127,21 @@ describe("StateStore save", () => {
 
 describe("ensureAppdataDir", () => {
   it("creates APPDATA_DIR when missing", () => {
-    ensureAppdataDir(fsReader);
+    fsReader.ensureAppdataDir();
     expect(fs.existsSync(APPDATA_DIR)).toBe(true);
   });
 });
 
 describe("ensureConfigDir", () => {
   it("creates CONFIGS_DIR", () => {
-    ensureConfigDir(fsReader);
+    fsReader.ensureConfigDir();
     expect(fs.existsSync(CONFIGS_DIR)).toBe(true);
   });
 });
 
 describe("ensureTempDir", () => {
   it("creates TEMP_DIR", () => {
-    ensureTempDir(fsReader);
+    fsReader.ensureTempDir();
     expect(fs.existsSync(TEMP_DIR)).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 import path from "path";
 import * as clack from "@clack/prompts";
-import { FsReader, SettingsStore, StateStore } from "./config";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
 import { CONFIGS_DIR, expandHomePath } from "./platform/paths";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
@@ -24,7 +25,7 @@ export function needsOnboarding(
 }
 
 export async function runOnboarding(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -68,7 +69,7 @@ export async function runOnboarding(
 }
 
 async function expressSetup(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -138,7 +139,7 @@ async function expressSetup(
 }
 
 async function customSetup(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -255,7 +256,7 @@ async function selectHarnessesInteractive(
 }
 
 async function migrateConfigsInteractive(
-  fs: FsReader,
+  fs: Filesystem,
   harnessIds: string[],
 ): Promise<void> {
   const options = harnessIds
@@ -308,7 +309,7 @@ async function migrateConfigsInteractive(
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         clack.log.success(`${pack.name}: ${c.config}`);
@@ -406,7 +407,7 @@ export function detectTools(runtime: Runtime): string[] {
   return detected;
 }
 
-function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
+function migrateHarnessConfigs(fs: Filesystem, harnessIds: string[]): number {
   let count = 0;
 
   for (const id of harnessIds) {
@@ -423,7 +424,7 @@ function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         count++;
@@ -436,7 +437,7 @@ function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
   return count;
 }
 
-export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
+export function migrateToolConfigs(fs: Filesystem, toolIds: string[]): number {
   let count = 0;
 
   for (const id of toolIds) {
@@ -453,7 +454,7 @@ export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         count++;
