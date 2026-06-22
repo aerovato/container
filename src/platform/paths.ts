@@ -37,12 +37,28 @@ export function resolveProjectPath(projectPath: string | undefined): string {
 
 export const CONTAINER_PREFIX = "container";
 
+// Canonical key derived from a project path, used solely for hashing the
+// container name. NOT a real filesystem path. Native Windows drive-letter
+// paths (C:\Users\dev) are rewritten to the WSL mount form (/mnt/c/Users/dev)
+// so the same project resolves to one container whether the CLI is invoked
+// from native Windows or WSL. All other paths pass through unchanged.
+function canonicalizeProjectPath(projectPath: string): string {
+  const trimmed = projectPath.replace(/[\\/]+$/, "");
+  const driveMatch = trimmed.match(/^([A-Za-z]):[\\/](.*)$/);
+  if (driveMatch) {
+    const drive = driveMatch[1].toLowerCase();
+    const rest = driveMatch[2].replace(/\\/g, "/");
+    return `/mnt/${drive}/${rest}`;
+  }
+  return trimmed;
+}
+
 export function generateContainerName(projectPath: string): string {
-  const normalizedPath = projectPath.replace(/[\\/]+$/, "");
-  const projectName = path.basename(normalizedPath);
+  const canonicalPath = canonicalizeProjectPath(projectPath);
+  const projectName = path.basename(canonicalPath);
   const pathHash = crypto
     .createHash("sha1")
-    .update(normalizedPath)
+    .update(canonicalPath)
     .digest("hex")
     .substring(0, 8);
   return `${CONTAINER_PREFIX}-${projectName}-${pathHash}`;

@@ -94,6 +94,30 @@ describe("generateContainerName", () => {
       generateContainerName("/home/user/project2"),
     );
   });
+
+  it("unifies native Windows and WSL paths for the same project", () => {
+    const windowsName = generateContainerName("C:\\Users\\dev\\project");
+    const wslName = generateContainerName("/mnt/c/Users/dev/project");
+    expect(windowsName).toBe(wslName);
+  });
+
+  it("unifies forward-slash drive paths with WSL paths", () => {
+    const driveName = generateContainerName("D:/dev/project");
+    const wslName = generateContainerName("/mnt/d/dev/project");
+    expect(driveName).toBe(wslName);
+  });
+
+  it("case-insensitively normalizes drive letters", () => {
+    expect(generateContainerName("C:\\Users\\dev\\project")).toBe(
+      generateContainerName("c:\\Users\\dev\\project"),
+    );
+  });
+
+  it("leaves WSL-native and POSIX paths unchanged", () => {
+    expect(generateContainerName("/home/user/project")).toBe(
+      generateContainerName("/home/user/project"),
+    );
+  });
 });
 
 describe("Runtime", () => {
