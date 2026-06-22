@@ -75,8 +75,10 @@ async function expressSetup(
 ): Promise<{ settings: Settings; state: StateData }> {
   const spinner = clack.spinner();
 
+  const detectionRuntime = new Runtime(executor, "docker");
+
   spinner.start("Detecting installed harnesses");
-  const harnessIds = detectHarnesses(executor);
+  const harnessIds = detectHarnesses(detectionRuntime);
   spinner.stop(
     `Detected ${harnessIds.length} harnesses: ${harnessIds.join(", ") || "none"}`,
   );
@@ -86,7 +88,7 @@ async function expressSetup(
   spinner.stop(`Migrated ${migratedCount} config items`);
 
   spinner.start("Detecting installed tooling");
-  const toolIds = detectTools(executor);
+  const toolIds = detectTools(detectionRuntime);
   spinner.stop(`Detected ${toolIds.length} tools`);
 
   spinner.start("Migrating tool configs");
@@ -198,7 +200,7 @@ async function selectToolsInteractive(
   const allIds = Object.keys(TOOL_PACKS);
   const currentIds =
     settings.enabledTools === undefined
-      ? detectTools(executor)
+      ? detectTools(new Runtime(executor, "docker"))
       : settings.enabledTools;
 
   const selectedIds = await clack.multiselect({
@@ -228,7 +230,7 @@ async function selectHarnessesInteractive(
   const allIds = Object.keys(HARNESS_PACKS);
   const currentIds =
     settings.enabledHarnesses === undefined
-      ? detectHarnesses(executor)
+      ? detectHarnesses(new Runtime(executor, "docker"))
       : settings.enabledHarnesses;
 
   const selectedIds = await clack.multiselect({
@@ -379,23 +381,11 @@ async function selectRuntimeInteractive(
   return selected;
 }
 
-function shouldEnablePack(
-  shouldEnable: boolean | string,
-  executor: Executor,
-): boolean {
-  if (typeof shouldEnable === "boolean") return shouldEnable;
-  const result = executor.spawnSync(shouldEnable, [], {
-    shell: true,
-    stdio: "pipe",
-  });
-  return result.status === 0;
-}
-
-function detectHarnesses(executor: Executor): string[] {
+function detectHarnesses(runtime: Runtime): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-    if (shouldEnablePack(pack.shouldEnable, executor)) {
+    if (pack.shouldEnable(runtime)) {
       detected.push(id);
     }
   }
@@ -403,11 +393,11 @@ function detectHarnesses(executor: Executor): string[] {
   return detected;
 }
 
-export function detectTools(executor: Executor): string[] {
+export function detectTools(runtime: Runtime): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(TOOL_PACKS)) {
-    if (shouldEnablePack(pack.shouldEnable, executor)) {
+    if (pack.shouldEnable(runtime)) {
       detected.push(id);
     }
   }

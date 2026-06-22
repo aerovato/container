@@ -10,7 +10,7 @@ import {
   migrateToolConfigs,
 } from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
-import { Executor } from "../src/runtime";
+import { Executor, Runtime } from "../src/runtime";
 
 vi.mock("fs");
 
@@ -40,7 +40,7 @@ describe("needsOnboarding", () => {
   });
 });
 
-describe("detectHarnesses (via executor)", () => {
+describe("detectHarnesses (via runtime)", () => {
   const calls: Array<{ command: string; args: string[]; options?: object }> =
     [];
   const queue: Array<{
@@ -57,6 +57,8 @@ describe("detectHarnesses (via executor)", () => {
     },
   };
 
+  const runtime = new Runtime(mockExecutor, "docker");
+
   beforeEach(() => {
     calls.length = 0;
     queue.length = 0;
@@ -71,11 +73,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
-        shell: true,
-        stdio: "pipe",
-      });
-      if (result.status === 0) detected.push(id);
+      if (pack.shouldEnable(runtime)) detected.push(id);
     }
 
     expect(detected).toEqual([ids[0]]);
@@ -89,11 +87,7 @@ describe("detectHarnesses (via executor)", () => {
 
     const detected: string[] = [];
     for (const [, pack] of Object.entries(HARNESS_PACKS)) {
-      const result = mockExecutor.spawnSync(pack.shouldEnable, [], {
-        shell: true,
-        stdio: "pipe",
-      });
-      if (result.status === 0) detected.push("x");
+      if (pack.shouldEnable(runtime)) detected.push("x");
     }
 
     expect(detected).toEqual([]);
@@ -178,15 +172,16 @@ describe("expandHomePath", () => {
 describe("detectTools", () => {
   it("detects always-enabled tools and command-detected tools", () => {
     const mockExecutor: Executor = {
-      spawnSync(command: string) {
+      spawnSync(_command: string, args: string[]) {
+        const bin = args[0] ?? "";
         return {
-          status: command.includes("deno") ? 0 : 1,
+          status: bin === "deno" ? 0 : 1,
           stdout: "",
           stderr: "",
         };
       },
     };
-    const detected = detectTools(mockExecutor);
+    const detected = detectTools(new Runtime(mockExecutor, "docker"));
     expect(detected).toEqual([
       "python",
       "bun",

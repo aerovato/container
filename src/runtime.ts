@@ -146,4 +146,10 @@ export class Runtime {
     });
     return result.status === 0;
   }
+
+  commandExists(cmd: string): boolean {
+    const bin = process.platform === "win32" ? "where" : "which";
+    const result = this.executor.spawnSync(bin, [cmd], { stdio: "pipe" });
+    return result.status === 0;
+  }
 }

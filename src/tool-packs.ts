@@ -4,7 +4,7 @@ export const TOOL_PACKS = {
   python: {
     id: "python",
     name: "Python",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [
       "RUN apt-get update && apt-get install -y python3 python3-dev python3-venv python3-pip",
       "RUN ln -sf /usr/bin/python3 /usr/bin/python",
@@ -14,7 +14,7 @@ export const TOOL_PACKS = {
   bun: {
     id: "bun",
     name: "Bun",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [
       "RUN curl -fsSL https://bun.sh/install | bash",
       "RUN echo 'export PATH=\"$HOME/.bun/bin:$PATH\"' >> ~/.bashrc",
@@ -31,7 +31,7 @@ export const TOOL_PACKS = {
   "enhanced-tools": {
     id: "enhanced-tools",
     name: "Enhanced Tools (fd, bat, fzf, ripgrep, eza, git-lfs, jq)",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [
       "RUN apt-get update && apt-get install -y fd-find bat fzf ripgrep eza git-lfs jq",
       "RUN ln -sf /usr/bin/fdfind /usr/local/bin/fd",
@@ -49,7 +49,7 @@ export const TOOL_PACKS = {
   "npm-config": {
     id: "npm-config",
     name: "Npm Config",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [],
     config: [
       { host: "~/.npm", config: ".npm", mount: "/root/.npm" },
@@ -59,7 +59,7 @@ export const TOOL_PACKS = {
   "git-config": {
     id: "git-config",
     name: "Git Config",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [],
     config: [
       { host: "~/.gitconfig", config: ".gitconfig", mount: "/root/.gitconfig" },
@@ -73,7 +73,7 @@ export const TOOL_PACKS = {
   "vim-config": {
     id: "vim-config",
     name: "Vim Config",
-    shouldEnable: true,
+    shouldEnable: () => true,
     dockerfileLines: [],
     config: [
       { host: "~/.vimrc", config: ".vimrc", mount: "/root/.vimrc" },
@@ -83,7 +83,7 @@ export const TOOL_PACKS = {
   deno: {
     id: "deno",
     name: "Deno",
-    shouldEnable: "which deno",
+    shouldEnable: rt => rt.commandExists("deno"),
     dockerfileLines: [
       "RUN curl -fsSL https://deno.land/install.sh | sh",
       "RUN echo 'export PATH=\"$HOME/.deno/bin:$PATH\"' >> ~/.bashrc",
@@ -93,7 +93,7 @@ export const TOOL_PACKS = {
   rust: {
     id: "rust",
     name: "Rust",
-    shouldEnable: "which rustup",
+    shouldEnable: rt => rt.commandExists("rustup"),
     dockerfileLines: [
       "RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
       "RUN echo 'export PATH=\"$HOME/.cargo/bin:$PATH\"' >> ~/.bashrc",
@@ -106,7 +106,7 @@ export const TOOL_PACKS = {
   go: {
     id: "go",
     name: "Go",
-    shouldEnable: "which go",
+    shouldEnable: rt => rt.commandExists("go"),
     dockerfileLines: ["RUN apt-get update && apt-get install -y golang"],
     config: [
       { host: "~/go", config: "go", mount: "/root/go" },
@@ -116,7 +116,7 @@ export const TOOL_PACKS = {
   uv: {
     id: "uv",
     name: "uv (Python)",
-    shouldEnable: "which uv",
+    shouldEnable: rt => rt.commandExists("uv"),
     dockerfileLines: [
       "RUN curl -LsSf https://astral.sh/uv/install.sh | sh",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
@@ -126,7 +126,7 @@ export const TOOL_PACKS = {
   gh: {
     id: "gh",
     name: "GitHub CLI",
-    shouldEnable: "which gh",
+    shouldEnable: rt => rt.commandExists("gh"),
     dockerfileLines: ["RUN apt-get update && apt-get install -y gh"],
     config: [
       { host: "~/.config/gh", config: ".config/gh", mount: "/root/.config/gh" },
@@ -135,7 +135,7 @@ export const TOOL_PACKS = {
   aws: {
     id: "aws",
     name: "AWS CLI",
-    shouldEnable: "which aws",
+    shouldEnable: rt => rt.commandExists("aws"),
     dockerfileLines: [
       'RUN ARCH=$(uname -m) && if [ "$ARCH" = "aarch64" ]; then AWS_ARCH="aarch64"; else AWS_ARCH="x86_64"; fi && curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install && rm -rf aws awscliv2.zip',
     ],
@@ -144,7 +144,7 @@ export const TOOL_PACKS = {
   gcloud: {
     id: "gcloud",
     name: "Google Cloud CLI",
-    shouldEnable: "which gcloud",
+    shouldEnable: rt => rt.commandExists("gcloud"),
     dockerfileLines: [
       'RUN ARCH=$(uname -m) && if [ "$ARCH" = "aarch64" ]; then GCLOUD_ARCH="arm"; else GCLOUD_ARCH="x86_64"; fi && curl -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-${GCLOUD_ARCH}.tar.gz" && tar -xf "google-cloud-cli-linux-${GCLOUD_ARCH}.tar.gz" && ./google-cloud-sdk/install.sh --quiet && rm "google-cloud-cli-linux-${GCLOUD_ARCH}.tar.gz"',
       "RUN echo 'export PATH=\"/root/google-cloud-sdk/bin:$PATH\"' >> ~/.bashrc",
@@ -160,14 +160,14 @@ export const TOOL_PACKS = {
   azure: {
     id: "azure",
     name: "Azure CLI",
-    shouldEnable: "which az",
+    shouldEnable: rt => rt.commandExists("az"),
     dockerfileLines: ["RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash"],
     config: [{ host: "~/.azure", config: ".azure", mount: "/root/.azure" }],
   },
   neovim: {
     id: "neovim",
     name: "Neovim",
-    shouldEnable: "which nvim",
+    shouldEnable: rt => rt.commandExists("nvim"),
     dockerfileLines: ["RUN apt-get update && apt-get install -y neovim"],
     config: [
       {
