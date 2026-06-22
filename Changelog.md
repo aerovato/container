@@ -1,5 +1,26 @@
 # Changelog
 
+## v3.3.0
+
+Additions:
+
+- Native Windows support (win32 + Docker Desktop) alongside Linux, macOS, and WSL
+- Platform abstraction layer (`src/platform/`) isolating all OS-dependent logic, enforced by an ESLint rule
+- Drive-letter path canonicalization: native Windows and WSL paths for the same project resolve to one container
+- New `internal/Specs/Windows.md` and `docs/Windows.md`
+
+Changes:
+
+- File permission modes now no-op on Windows (Windows ACLs govern permissions)
+- `commandExists` uses `where` on Windows (`which` on POSIX)
+- Runtime default prefers Docker on Windows when both Docker and Podman are available
+
+FYI:
+
+- Tool and harness config paths remain POSIX-oriented; on Windows they resolve against the home directory and may need manual copying where a tool stores config elsewhere
+- UNC paths are not supported as project directories
+- See [docs/Windows.md](docs/Windows.md) for full details
+
 ## v3.2.0
 
 Additions:

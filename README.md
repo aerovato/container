@@ -11,7 +11,6 @@
 ### Prerequisites
 
 - **Docker or Podman** — Docker Desktop/Engine or Podman
-- **A POSIX-Compatible System** — Linux, macOS, WSL
 
 ### Installation
 
@@ -123,6 +122,7 @@ After upgrading to V3, all configurations will be archived to `~/.code-container
 - **Isolation** — Destructive actions stay inside the container
 - **3-Stage Builds** — Core → Harness → User (rebuild only what changed)
 - **Configurable Runtime** — Docker or Podman
+- **Cross-Platform** — Linux, macOS, Windows (both native and WSL)
 - **Harness Packs** — Choose exactly which tools to enable
 - **Persistent State** — Workspaces and configs survive across sessions
 - **Simultaneous Work** — Multiple agents can safely work on the same project

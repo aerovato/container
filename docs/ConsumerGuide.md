@@ -13,6 +13,7 @@ If the user asks you to setup `container`, follow these steps.
 ### Pre-setup
 
 - Read `./README.md`
+- On Windows, `container` runs natively (no WSL required). See [Windows.md](/docs/Windows.md) for requirements and caveats.
 
 ### Setup
 
