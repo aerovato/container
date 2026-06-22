@@ -1,16 +1,7 @@
 import { Result, RuntimeBin } from "./types";
+import { Executor } from "./platform/shell";
 
-export interface SpawnSyncResult {
-  status: number | null;
-  stdout: string | Buffer;
-  stderr: string | Buffer;
-}
-
-export interface Executor {
-  spawnSync(bin: string, args: string[], options?: object): SpawnSyncResult;
-}
-
-export class Runtime {
+export class ContainerClient {
   constructor(
     private executor: Executor,
     private bin: RuntimeBin,
@@ -145,5 +136,17 @@ export class Runtime {
       stdio: "pipe",
     });
     return result.status === 0;
+  }
+
+  attachedSessionCount(name: string): number {
+    const result = this.executor.spawnSync(this.bin, ["top", name], {
+      stdio: "pipe",
+    });
+    if (result.status !== 0) return 0;
+    let count = 0;
+    for (const line of result.stdout.toString().split("\n")) {
+      if (line.includes("bash")) count++;
+    }
+    return count;
   }
 }

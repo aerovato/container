@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import { fs, vol } from "memfs";
-import { SETTINGS_PATH, SettingsStore, FsReader } from "../src/config";
+import { SETTINGS_PATH } from "../src/platform/paths";
+import { SettingsStore } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import { ensureTosAccepted, LATEST_TOS_VERSION } from "../src/tos";
 
 vi.mock("fs");
@@ -14,7 +16,7 @@ vi.mock("@clack/prompts", () => ({
 
 import * as clack from "@clack/prompts";
 
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
   vol.reset();

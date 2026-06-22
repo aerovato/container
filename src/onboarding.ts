@@ -1,13 +1,18 @@
-import os from "os";
 import path from "path";
 import * as clack from "@clack/prompts";
-import { FsReader, CONFIGS_DIR, SettingsStore, StateStore } from "./config";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
+import { CONFIGS_DIR, expandHomePath } from "./platform/paths";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
 import { buildImage } from "./docker";
-import { Executor, Runtime } from "./runtime";
-import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
+import { ContainerClient } from "./container-client";
+import {
+  Executor,
+  getDefaultRuntime,
+  getRuntimeAvailability,
+} from "./platform/shell";
 
 export const LATEST_ONBOARDING_VERSION = 4;
 
@@ -23,7 +28,7 @@ export function needsOnboarding(
 }
 
 export async function runOnboarding(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -67,7 +72,7 @@ export async function runOnboarding(
 }
 
 async function expressSetup(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -120,7 +125,7 @@ async function expressSetup(
   stateStore.save(finalState);
 
   if (runtime) {
-    const rt = new Runtime(executor, runtime);
+    const rt = new ContainerClient(executor, runtime);
     clack.log.info(`Building container image (target: full)`);
     const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
     if (!buildResult.ok) {
@@ -135,7 +140,7 @@ async function expressSetup(
 }
 
 async function customSetup(
-  fs: FsReader,
+  fs: Filesystem,
   executor: Executor,
   settings: Settings,
   settingsStore: SettingsStore,
@@ -176,7 +181,7 @@ async function customSetup(
       message: "Build the container image now? (Recommended)",
     });
     if (!clack.isCancel(shouldBuild) && shouldBuild) {
-      const rt = new Runtime(executor, runtime);
+      const rt = new ContainerClient(executor, runtime);
       clack.log.info(`Building container image (target: full)`);
       const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
       if (!buildResult.ok) {
@@ -252,7 +257,7 @@ async function selectHarnessesInteractive(
 }
 
 async function migrateConfigsInteractive(
-  fs: FsReader,
+  fs: Filesystem,
   harnessIds: string[],
 ): Promise<void> {
   const options = harnessIds
@@ -305,7 +310,7 @@ async function migrateConfigsInteractive(
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         clack.log.success(`${pack.name}: ${c.config}`);
@@ -379,23 +384,11 @@ async function selectRuntimeInteractive(
   return selected;
 }
 
-function shouldEnablePack(
-  shouldEnable: boolean | string,
-  executor: Executor,
-): boolean {
-  if (typeof shouldEnable === "boolean") return shouldEnable;
-  const result = executor.spawnSync(shouldEnable, [], {
-    shell: true,
-    stdio: "pipe",
-  });
-  return result.status === 0;
-}
-
 function detectHarnesses(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
-    if (shouldEnablePack(pack.shouldEnable, executor)) {
+    if (pack.shouldEnable(executor)) {
       detected.push(id);
     }
   }
@@ -407,7 +400,7 @@ export function detectTools(executor: Executor): string[] {
   const detected: string[] = [];
 
   for (const [id, pack] of Object.entries(TOOL_PACKS)) {
-    if (shouldEnablePack(pack.shouldEnable, executor)) {
+    if (pack.shouldEnable(executor)) {
       detected.push(id);
     }
   }
@@ -415,7 +408,7 @@ export function detectTools(executor: Executor): string[] {
   return detected;
 }
 
-function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
+function migrateHarnessConfigs(fs: Filesystem, harnessIds: string[]): number {
   let count = 0;
 
   for (const id of harnessIds) {
@@ -432,7 +425,7 @@ function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         count++;
@@ -445,7 +438,7 @@ function migrateHarnessConfigs(fs: FsReader, harnessIds: string[]): number {
   return count;
 }
 
-export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
+export function migrateToolConfigs(fs: Filesystem, toolIds: string[]): number {
   let count = 0;
 
   for (const id of toolIds) {
@@ -462,7 +455,7 @@ export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
       try {
         const parentDir = path.dirname(destPath);
         if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
+          fs.secureMkdir(parentDir);
         }
         fs.cpSync(sourcePath, destPath, { recursive: true });
         count++;
@@ -473,12 +466,4 @@ export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
   }
 
   return count;
-}
-
-function expandHomePath(hostPath: string): string {
-  const home = os.homedir();
-  if (hostPath.startsWith("~")) {
-    return path.join(home, hostPath.slice(1));
-  }
-  return hostPath;
 }

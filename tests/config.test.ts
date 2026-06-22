@@ -3,21 +3,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fs, vol } from "memfs";
 import {
   APPDATA_DIR,
-  CONFIGS_DIR,
   TEMP_DIR,
   SETTINGS_PATH,
   STATE_PATH,
-  SettingsStore,
-  StateStore,
-  ensureAppdataDir,
-  ensureConfigDir,
-  ensureTempDir,
-  FsReader,
-} from "../src/config";
+} from "../src/platform/paths";
+import { SettingsStore, StateStore } from "../src/config";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import { maybeCheckForUpdate } from "../src/update-check";
 
 const SETTINGS_DIR = path.dirname(SETTINGS_PATH);
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 vi.mock("fs");
 
@@ -125,27 +120,6 @@ describe("StateStore save", () => {
     expect(result.ok).toBe(true);
     const content = fs.readFileSync(STATE_PATH, "utf-8") as string;
     expect(JSON.parse(content)).toEqual({ buildDirty: "tools" });
-    expect(fs.existsSync(TEMP_DIR)).toBe(true);
-  });
-});
-
-describe("ensureAppdataDir", () => {
-  it("creates APPDATA_DIR when missing", () => {
-    ensureAppdataDir(fsReader);
-    expect(fs.existsSync(APPDATA_DIR)).toBe(true);
-  });
-});
-
-describe("ensureConfigDir", () => {
-  it("creates CONFIGS_DIR", () => {
-    ensureConfigDir(fsReader);
-    expect(fs.existsSync(CONFIGS_DIR)).toBe(true);
-  });
-});
-
-describe("ensureTempDir", () => {
-  it("creates TEMP_DIR", () => {
-    ensureTempDir(fsReader);
     expect(fs.existsSync(TEMP_DIR)).toBe(true);
   });
 });

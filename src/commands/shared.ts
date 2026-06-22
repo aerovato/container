@@ -1,20 +1,10 @@
 import path from "path";
 import * as clack from "@clack/prompts";
-import { StateStore, SettingsStore, FsReader } from "../config";
-import { generateContainerName, buildImage, CONTAINER_IMAGE } from "../docker";
-import { RuntimeBin } from "../types";
-import { Runtime, Executor } from "../runtime";
-
-export function resolveProjectPath(projectPath: string | undefined): string {
-  if (!projectPath) {
-    return process.cwd();
-  }
-  return path.resolve(projectPath);
-}
-
-export function resolveContainerName(target: string | undefined): string {
-  return generateContainerName(resolveProjectPath(target));
-}
+import { StateStore, SettingsStore } from "../config";
+import { Filesystem } from "../platform/fs";
+import { buildImage, CONTAINER_IMAGE } from "../docker";
+import { ContainerClient } from "../container-client";
+import { generateContainerName, resolveProjectPath } from "../platform/paths";
 
 export interface ResolvedTarget {
   containerName: string;
@@ -23,7 +13,7 @@ export interface ResolvedTarget {
 }
 
 export function resolveTarget(
-  fs: FsReader,
+  fs: Filesystem,
   target: string | undefined,
 ): ResolvedTarget | null {
   const projectPath = resolveProjectPath(target);
@@ -44,30 +34,11 @@ export function getBuildDirty(
   return result.value.buildDirty;
 }
 
-export function getRuntimeAvailability(executor: Executor): {
-  docker: boolean;
-  podman: boolean;
-} {
-  const docker =
-    executor.spawnSync("docker", ["--version"], { stdio: "pipe" }).status === 0;
-  const podman =
-    executor.spawnSync("podman", ["--version"], { stdio: "pipe" }).status === 0;
-  return { docker, podman };
-}
-
-export function getDefaultRuntime(executor: Executor): RuntimeBin | undefined {
-  const { docker, podman } = getRuntimeAvailability(executor);
-  if (!docker && !podman) return undefined;
-  if (docker && !podman) return "docker";
-  if (!docker && podman) return "podman";
-  return process.platform === "linux" ? "podman" : "docker";
-}
-
 export async function ensureImageReady(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
 ): Promise<void> {
   const dirty = getBuildDirty(stateStore);
   if (dirty) {

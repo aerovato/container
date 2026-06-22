@@ -1,10 +1,11 @@
 import { HarnessPack } from "./types";
+import { commandExists } from "./platform/shell";
 
 export const HARNESS_PACKS = {
   claude: {
     id: "claude",
     name: "Claude Code",
-    shouldEnable: "which claude",
+    shouldEnable: exec => commandExists(exec, "claude"),
     dockerfileLines: [
       "RUN curl -fsSL https://claude.ai/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
@@ -31,7 +32,7 @@ export const HARNESS_PACKS = {
   opencode: {
     id: "opencode",
     name: "OpenCode",
-    shouldEnable: "which opencode",
+    shouldEnable: exec => commandExists(exec, "opencode"),
     dockerfileLines: ["RUN npm install -g opencode-ai"],
     config: [
       {
@@ -59,21 +60,21 @@ export const HARNESS_PACKS = {
   codex: {
     id: "codex",
     name: "OpenAI Codex",
-    shouldEnable: "which codex",
+    shouldEnable: exec => commandExists(exec, "codex"),
     dockerfileLines: ["RUN npm install -g @openai/codex"],
     config: [{ host: "~/.codex", config: ".codex", mount: "/root/.codex" }],
   },
   gemini: {
     id: "gemini",
     name: "Gemini CLI",
-    shouldEnable: "which gemini",
+    shouldEnable: exec => commandExists(exec, "gemini"),
     dockerfileLines: ["RUN npm install -g @google/gemini-cli"],
     config: [{ host: "~/.gemini", config: ".gemini", mount: "/root/.gemini" }],
   },
   copilot: {
     id: "copilot",
     name: "GitHub Copilot CLI",
-    shouldEnable: "which copilot",
+    shouldEnable: exec => commandExists(exec, "copilot"),
     dockerfileLines: ["RUN npm install -g @github/copilot"],
     config: [
       { host: "~/.copilot", config: ".copilot", mount: "/root/.copilot" },
@@ -82,7 +83,7 @@ export const HARNESS_PACKS = {
   grok: {
     id: "grok",
     name: "Grok Build",
-    shouldEnable: "which grok",
+    shouldEnable: exec => commandExists(exec, "grok"),
     dockerfileLines: [
       "RUN curl -fsSL https://x.ai/cli/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
@@ -92,7 +93,7 @@ export const HARNESS_PACKS = {
   cursor: {
     id: "cursor",
     name: "Cursor CLI",
-    shouldEnable: "which cursor-agent",
+    shouldEnable: exec => commandExists(exec, "cursor-agent"),
     dockerfileLines: ["RUN curl https://cursor.com/install -fsS | bash"],
     config: [
       { host: "~/.cursor", config: ".cursor", mount: "/root/.cursor" },
@@ -111,14 +112,14 @@ export const HARNESS_PACKS = {
   nitro: {
     id: "nitro",
     name: "Aerovato Nitro",
-    shouldEnable: "which nitro",
+    shouldEnable: exec => commandExists(exec, "nitro"),
     dockerfileLines: ["RUN npm install -g @aerovato/nitro"],
     config: [{ host: "~/.nitro", config: ".nitro", mount: "/root/.nitro" }],
   },
   antigravity: {
     id: "antigravity",
     name: "Antigravity CLI",
-    shouldEnable: "which agy",
+    shouldEnable: exec => commandExists(exec, "agy"),
     dockerfileLines: [
       "RUN curl -fsSL https://antigravity.google/cli/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",

@@ -2,20 +2,12 @@
 
 // eslint-disable-next-line no-restricted-imports
 import fs from "fs";
-// eslint-disable-next-line no-restricted-imports
-import { spawnSync } from "child_process";
 import * as clack from "@clack/prompts";
-import {
-  SettingsStore,
-  StateStore,
-  FsReader,
-  SETTINGS_PATH,
-  STATE_PATH,
-  ensureAppdataDir,
-  ensureConfigDir,
-  ensureTempDir,
-} from "./config";
-import { Runtime, Executor } from "./runtime";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
+import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
+import { ContainerClient } from "./container-client";
+import { Executor, createExecutor, getDefaultRuntime } from "./platform/shell";
 import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
 import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
@@ -28,10 +20,9 @@ import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
-import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
 
-const executor: Executor = { spawnSync };
+const executor: Executor = createExecutor();
 
 function setDefaultSettings(
   exec: Executor,
@@ -59,10 +50,10 @@ function setDefaultSettings(
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
-  const fsReader: FsReader = fs;
-  ensureAppdataDir(fsReader);
-  ensureConfigDir(fsReader);
-  ensureTempDir(fsReader);
+  const fsReader = new Filesystem(fs);
+  fsReader.ensureAppdataDir();
+  fsReader.ensureConfigDir();
+  fsReader.ensureTempDir();
   const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
   const stateStore = new StateStore(fsReader, STATE_PATH);
 
@@ -102,7 +93,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const runtime = new Runtime(executor, settings.runtime);
+  const runtime = new ContainerClient(executor, settings.runtime);
 
   if (!runtime.daemonRunning()) {
     clack.log.error(
@@ -111,7 +102,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  stopOrphanedContainers(executor, runtime);
+  stopOrphanedContainers(runtime);
 
   switch (parsed.command) {
     case "list":
@@ -132,7 +123,6 @@ async function main(): Promise<void> {
     case "run":
       await runCommand(
         runtime,
-        executor,
         settingsStore,
         stateStore,
         fsReader,
@@ -153,7 +143,6 @@ async function main(): Promise<void> {
     case "attach":
       attachCommand(
         runtime,
-        executor,
         settingsStore,
         fsReader,
         parsed.target,

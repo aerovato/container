@@ -1,13 +1,13 @@
 import * as clack from "@clack/prompts";
-import { Runtime, Executor } from "../runtime";
-import { SettingsStore, FsReader } from "../config";
+import { ContainerClient } from "../container-client";
+import { SettingsStore } from "../config";
+import { Filesystem } from "../platform/fs";
 import { resolveTarget, ResolvedTarget } from "./shared";
 import { Settings } from "../types";
 import { execInteractive, stopContainerIfLastSession } from "../container";
 
 export function attachToContainer(
-  runtime: Runtime,
-  executor: Executor,
+  runtime: ContainerClient,
   settings: Settings,
   resolved: ResolvedTarget,
   cliFlags: string[],
@@ -27,7 +27,7 @@ export function attachToContainer(
   const cleanup = (): void => {
     if (stopped) return;
     stopped = true;
-    stopContainerIfLastSession(executor, runtime, resolved.containerName);
+    stopContainerIfLastSession(runtime, resolved.containerName);
   };
 
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGHUP", "SIGTERM"];
@@ -52,10 +52,9 @@ export function attachToContainer(
 }
 
 export function attachCommand(
-  runtime: Runtime,
-  executor: Executor,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: string | undefined,
   cliFlags: string[] = [],
 ): void {
@@ -69,5 +68,5 @@ export function attachCommand(
   const resolved = resolveTarget(fs, target);
   if (!resolved) process.exit(1);
 
-  attachToContainer(runtime, executor, settings, resolved, cliFlags);
+  attachToContainer(runtime, settings, resolved, cliFlags);
 }

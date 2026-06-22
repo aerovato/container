@@ -1,15 +1,14 @@
-import path from "path";
-import crypto from "crypto";
 import * as clack from "@clack/prompts";
-import { Runtime } from "./runtime";
-import { FsReader } from "./config";
+import { ContainerClient } from "./container-client";
+import { SettingsStore, StateStore } from "./config";
+import { Filesystem } from "./platform/fs";
 import {
-  SettingsStore,
-  StateStore,
-  TEMP_DIR,
   APPDATA_DIR,
   USER_DOCKERFILE_PATH,
-} from "./config";
+  CORE_DOCKERFILE_PATH,
+  TOOLS_DOCKERFILE_PATH,
+  HARNESS_DOCKERFILE_PATH,
+} from "./platform/paths";
 import {
   CORE_IMAGE,
   TOOLS_IMAGE,
@@ -27,33 +26,14 @@ function shouldBuild(target: BuildTarget, stage: BuildTarget): boolean {
   return BUILD_ORDER.indexOf(target) <= BUILD_ORDER.indexOf(stage);
 }
 
-export const CONTAINER_PREFIX = "container";
 export const IMAGE_TAG = "latest";
 export const CONTAINER_IMAGE = `${USER_IMAGE}:${IMAGE_TAG}`;
 
-export const CORE_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Core");
-export const TOOLS_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Tools");
-export const HARNESS_DOCKERFILE_PATH = path.join(
-  TEMP_DIR,
-  "Dockerfile.Harness",
-);
-
-export function generateContainerName(projectPath: string): string {
-  const normalizedPath = projectPath.replace(/\/$/, "");
-  const projectName = path.basename(normalizedPath);
-  const pathHash = crypto
-    .createHash("sha1")
-    .update(normalizedPath)
-    .digest("hex")
-    .substring(0, 8);
-  return `${CONTAINER_PREFIX}-${projectName}-${pathHash}`;
-}
-
 export function buildImage(
-  runtime: Runtime,
+  runtime: ContainerClient,
   settingsStore: SettingsStore,
   stateStore: StateStore,
-  fs: FsReader,
+  fs: Filesystem,
   target: BuildTarget,
 ): Result<void> {
   const settingsResult = settingsStore.load();

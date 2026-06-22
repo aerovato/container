@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Executor } from "./platform/shell";
 
 export type Result<T, E = string> =
   | { ok: true; value: T }
@@ -28,7 +29,7 @@ export interface ConfigMount {
 export interface HarnessPack {
   id: string;
   name: string;
-  shouldEnable: boolean | string;
+  shouldEnable: (executor: Executor) => boolean;
   dockerfileLines: string[];
   config: ConfigMount[];
 }
@@ -36,7 +37,7 @@ export interface HarnessPack {
 export interface ToolPack {
   id: string;
   name: string;
-  shouldEnable: boolean | string;
+  shouldEnable: (executor: Executor) => boolean;
   dockerfileLines: string[];
   config: ConfigMount[];
 }

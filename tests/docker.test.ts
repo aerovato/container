@@ -2,21 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { Runtime, Executor } from "../src/runtime";
+import { ContainerClient } from "../src/container-client";
+import { Executor } from "../src/platform/shell";
+import { FsReader, Filesystem } from "../src/platform/fs";
 import {
-  SettingsStore,
-  StateStore,
-  FsReader,
   APPDATA_DIR,
   TEMP_DIR,
-} from "../src/config";
-import {
-  generateContainerName,
-  buildImage,
   CORE_DOCKERFILE_PATH,
   TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
-} from "../src/docker";
+} from "../src/platform/paths";
+import { SettingsStore, StateStore } from "../src/config";
+import { buildImage } from "../src/docker";
 import {
   generateDockerfileCore,
   resolveCoreConfig,
@@ -26,7 +23,6 @@ import {
 import { generateDockerfileHarness } from "../src/dockerfile-harness";
 import { generateDockerfileTools } from "../src/dockerfile-tools";
 import {
-  getOtherSessionCount,
   stopContainerIfLastSession,
   createNewContainer,
   getMounts,
@@ -64,7 +60,7 @@ function reset() {
   queue.length = 0;
 }
 
-const fsReader = fs as unknown as FsReader;
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
   reset();
@@ -77,29 +73,8 @@ afterEach(() => {
   }
 });
 
-describe("generateContainerName", () => {
-  it("strips trailing slash from path", () => {
-    const withSlash = generateContainerName("/home/user/project/");
-    const withoutSlash = generateContainerName("/home/user/project");
-    expect(withSlash).toBe(withoutSlash);
-    expect(withSlash).toMatch(/^container-project-[a-f0-9]{8}$/);
-  });
-
-  it("generates consistent hash for same path", () => {
-    expect(generateContainerName("/home/user/myproject")).toBe(
-      generateContainerName("/home/user/myproject"),
-    );
-  });
-
-  it("generates different hashes for different paths", () => {
-    expect(generateContainerName("/home/user/project1")).not.toBe(
-      generateContainerName("/home/user/project2"),
-    );
-  });
-});
-
 describe("Runtime", () => {
-  const runtime = new Runtime(mockExecutor, "docker");
+  const runtime = new ContainerClient(mockExecutor, "docker");
 
   describe("imageExists", () => {
     it("returns true when status is 0", () => {
@@ -167,57 +142,53 @@ describe("Runtime", () => {
   });
 });
 
-describe("getOtherSessionCount", () => {
-  it("returns 0 when ps fails", () => {
+describe("attachedSessionCount", () => {
+  it("returns 0 when docker top fails", () => {
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 1 });
-    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
-      0,
-    );
+    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(0);
   });
 
-  it("counts matching docker exec sessions", () => {
+  it("counts bash sessions", () => {
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({
       status: 0,
       stdout:
-        "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n"
-        + "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n"
-        + "some other process\n",
+        "UID PID PPID C STIME TTY TIME CMD\n"
+        + "root 1 0 0 14:00 ? 00:00 sleep infinity\n"
+        + "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n"
+        + "root 333 1 0 14:02 pts/1 00:00 /bin/bash\n",
     });
-    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
-      2,
-    );
+    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(2);
   });
 
-  it("does not count non-matching sessions", () => {
+  it("does not count non-bash processes", () => {
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({
       status: 0,
-      stdout:
-        "docker exec -it -w /root/bar container-bar-xyz /bin/bash\n"
-        + "ps ax -o command=\n",
+      stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\nother process\n",
     });
-    expect(getOtherSessionCount(mockExecutor, "container-foo-abc12345")).toBe(
-      0,
-    );
+    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(0);
   });
 });
 
 describe("stopContainerIfLastSession", () => {
   it("stops when no other sessions", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
-    enqueue({ status: 0, stdout: "unrelated\n" });
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
     enqueue({ status: 0 });
-    stopContainerIfLastSession(mockExecutor, runtime, "container-foo-abc12345");
+    stopContainerIfLastSession(runtime, "container-foo-abc12345");
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
   });
 
   it("skips stop when other sessions exist", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({
       status: 0,
-      stdout: "docker exec -it -w /root/foo container-foo-abc12345 /bin/bash\n",
+      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
     });
-    stopContainerIfLastSession(mockExecutor, runtime, "container-foo-abc12345");
+    stopContainerIfLastSession(runtime, "container-foo-abc12345");
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
   });
@@ -225,7 +196,7 @@ describe("stopContainerIfLastSession", () => {
 
 describe("createNewContainer", () => {
   it("constructs correct docker run arguments", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     const settings: Settings = {};
     enqueue({ status: 0 });
 
@@ -254,7 +225,7 @@ describe("createNewContainer", () => {
   });
 
   it("includes cliFlags in the argument list", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     const settings: Settings = {};
     enqueue({ status: 0 });
 
@@ -273,7 +244,7 @@ describe("createNewContainer", () => {
   });
 
   it("returns failure on non-zero exit", () => {
-    const runtime = new Runtime(mockExecutor, "docker");
+    const runtime = new ContainerClient(mockExecutor, "docker");
     const settings: Settings = {};
     enqueue({ status: 1 });
 
@@ -307,7 +278,7 @@ describe("buildImage", () => {
   describe("full target", () => {
     it("builds all 4 stages", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -330,7 +301,7 @@ describe("buildImage", () => {
 
     it("generates Dockerfile.Core and Dockerfile.Harness to temp", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -348,7 +319,7 @@ describe("buildImage", () => {
   describe("harness target", () => {
     it("builds 2 stages (harness, user)", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -371,7 +342,7 @@ describe("buildImage", () => {
   describe("user target", () => {
     it("builds only the user stage", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 0 });
       enqueue({ status: 0 });
@@ -393,7 +364,7 @@ describe("buildImage", () => {
   describe("failure handling", () => {
     it("returns failure when core stage fails", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 1 });
 
@@ -411,7 +382,7 @@ describe("buildImage", () => {
 
     it("returns failure when harness stage fails", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       enqueue({ status: 0 });
       enqueue({ status: 1 });
@@ -432,7 +403,7 @@ describe("buildImage", () => {
   describe("buildDirty clearing", () => {
     it("full build clears buildDirty", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       stateStore.save({ buildDirty: "tools" });
       enqueue({ status: 0 });
@@ -451,7 +422,7 @@ describe("buildImage", () => {
 
     it("harness build clears only harness dirty", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       stateStore.save({ buildDirty: "harness" });
       enqueue({ status: 0 });
@@ -468,7 +439,7 @@ describe("buildImage", () => {
 
     it("harness build leaves tools dirty intact", () => {
       seedDirs();
-      const runtime = new Runtime(mockExecutor, "docker");
+      const runtime = new ContainerClient(mockExecutor, "docker");
       const { settingsStore, stateStore } = makeStores();
       stateStore.save({ buildDirty: "tools" });
       enqueue({ status: 0 });
@@ -586,7 +557,7 @@ describe("getMounts", () => {
 });
 
 describe("listRunningManagedContainers", () => {
-  const runtime = new Runtime(mockExecutor, "docker");
+  const runtime = new ContainerClient(mockExecutor, "docker");
 
   it("returns container names from stdout", () => {
     enqueue({
@@ -611,7 +582,7 @@ describe("listRunningManagedContainers", () => {
 });
 
 describe("containerStartedAt", () => {
-  const runtime = new Runtime(mockExecutor, "docker");
+  const runtime = new ContainerClient(mockExecutor, "docker");
 
   it("returns timestamp string when status is 0", () => {
     enqueue({ status: 0, stdout: "2026-06-11T14:30:00.123456789Z\n" });
@@ -627,7 +598,7 @@ describe("containerStartedAt", () => {
 });
 
 describe("stopOrphanedContainers", () => {
-  const runtime = new Runtime(mockExecutor, "docker");
+  const runtime = new ContainerClient(mockExecutor, "docker");
   let dateNowSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -637,16 +608,15 @@ describe("stopOrphanedContainers", () => {
   afterEach(() => {
     dateNowSpy.mockRestore();
   });
-
   it("stops orphaned container past threshold with no sessions", () => {
     dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
 
     enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({ status: 0, stdout: "unrelated process\n" });
+    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
     enqueue({ status: 0 });
 
-    stopOrphanedContainers(mockExecutor, runtime);
+    stopOrphanedContainers(runtime);
 
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
@@ -659,7 +629,7 @@ describe("stopOrphanedContainers", () => {
     enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
 
-    stopOrphanedContainers(mockExecutor, runtime);
+    stopOrphanedContainers(runtime);
 
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
@@ -672,11 +642,10 @@ describe("stopOrphanedContainers", () => {
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
     enqueue({
       status: 0,
-      stdout:
-        "docker exec -it -w /root/myproject container-myproject-abc12345 /bin/bash\n",
+      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
     });
 
-    stopOrphanedContainers(mockExecutor, runtime);
+    stopOrphanedContainers(runtime);
 
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
@@ -688,7 +657,7 @@ describe("stopOrphanedContainers", () => {
     enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
     enqueue({ status: 1 });
 
-    stopOrphanedContainers(mockExecutor, runtime);
+    stopOrphanedContainers(runtime);
 
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
@@ -702,15 +671,15 @@ describe("stopOrphanedContainers", () => {
       stdout: "container-foo-abc12345\ncontainer-bar-def67890\n",
     });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({ status: 0, stdout: "unrelated\n" });
+    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
     enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
     enqueue({
       status: 0,
-      stdout: "docker exec -it -w /root/bar container-bar-def67890 /bin/bash\n",
+      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
     });
 
-    stopOrphanedContainers(mockExecutor, runtime);
+    stopOrphanedContainers(runtime);
 
     const stopCalls = calls.filter(c => c.args[0] === "stop");
     expect(stopCalls).toHaveLength(1);
