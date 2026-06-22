@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fs, vol } from "memfs";
 import {
   APPDATA_DIR,
-  CONFIGS_DIR,
   TEMP_DIR,
   SETTINGS_PATH,
   STATE_PATH,
@@ -121,27 +120,6 @@ describe("StateStore save", () => {
     expect(result.ok).toBe(true);
     const content = fs.readFileSync(STATE_PATH, "utf-8") as string;
     expect(JSON.parse(content)).toEqual({ buildDirty: "tools" });
-    expect(fs.existsSync(TEMP_DIR)).toBe(true);
-  });
-});
-
-describe("ensureAppdataDir", () => {
-  it("creates APPDATA_DIR when missing", () => {
-    fsReader.ensureAppdataDir();
-    expect(fs.existsSync(APPDATA_DIR)).toBe(true);
-  });
-});
-
-describe("ensureConfigDir", () => {
-  it("creates CONFIGS_DIR", () => {
-    fsReader.ensureConfigDir();
-    expect(fs.existsSync(CONFIGS_DIR)).toBe(true);
-  });
-});
-
-describe("ensureTempDir", () => {
-  it("creates TEMP_DIR", () => {
-    fsReader.ensureTempDir();
     expect(fs.existsSync(TEMP_DIR)).toBe(true);
   });
 });

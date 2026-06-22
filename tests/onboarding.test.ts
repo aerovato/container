@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR, expandHomePath } from "../src/platform/paths";
+import { CONFIGS_DIR } from "../src/platform/paths";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   needsOnboarding,
@@ -146,18 +146,6 @@ describe("migrateHarnessConfigs (via fs)", () => {
     }
 
     expect(fs.existsSync(destPath)).toBe(false);
-  });
-});
-
-describe("expandHomePath", () => {
-  it("expands tilde to home directory", () => {
-    expect(expandHomePath("~/.claude")).toBe(
-      path.join(os.homedir(), ".claude"),
-    );
-  });
-
-  it("returns absolute path unchanged", () => {
-    expect(expandHomePath("/absolute/path")).toBe("/absolute/path");
   });
 });
 

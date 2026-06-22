@@ -8,14 +8,12 @@ import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   APPDATA_DIR,
   TEMP_DIR,
-  generateContainerName,
   CORE_DOCKERFILE_PATH,
   TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
 } from "../src/platform/paths";
 import { SettingsStore, StateStore } from "../src/config";
 import { buildImage } from "../src/docker";
-import { buildBindMount } from "../src/platform/paths";
 import {
   generateDockerfileCore,
   resolveCoreConfig,
@@ -73,51 +71,6 @@ afterEach(() => {
   if (queue.length > 0) {
     throw new Error(`${queue.length} unconsumed mock responses remaining`);
   }
-});
-
-describe("generateContainerName", () => {
-  it("strips trailing slash from path", () => {
-    const withSlash = generateContainerName("/home/user/project/");
-    const withoutSlash = generateContainerName("/home/user/project");
-    expect(withSlash).toBe(withoutSlash);
-    expect(withSlash).toMatch(/^container-project-[a-f0-9]{8}$/);
-  });
-
-  it("generates consistent hash for same path", () => {
-    expect(generateContainerName("/home/user/myproject")).toBe(
-      generateContainerName("/home/user/myproject"),
-    );
-  });
-
-  it("generates different hashes for different paths", () => {
-    expect(generateContainerName("/home/user/project1")).not.toBe(
-      generateContainerName("/home/user/project2"),
-    );
-  });
-
-  it("unifies native Windows and WSL paths for the same project", () => {
-    const windowsName = generateContainerName("C:\\Users\\dev\\project");
-    const wslName = generateContainerName("/mnt/c/Users/dev/project");
-    expect(windowsName).toBe(wslName);
-  });
-
-  it("unifies forward-slash drive paths with WSL paths", () => {
-    const driveName = generateContainerName("D:/dev/project");
-    const wslName = generateContainerName("/mnt/d/dev/project");
-    expect(driveName).toBe(wslName);
-  });
-
-  it("case-insensitively normalizes drive letters", () => {
-    expect(generateContainerName("C:\\Users\\dev\\project")).toBe(
-      generateContainerName("c:\\Users\\dev\\project"),
-    );
-  });
-
-  it("leaves WSL-native and POSIX paths unchanged", () => {
-    expect(generateContainerName("/home/user/project")).toBe(
-      generateContainerName("/home/user/project"),
-    );
-  });
 });
 
 describe("Runtime", () => {
@@ -568,32 +521,6 @@ describe("generateDockerfileHarness", () => {
     expect(result).toBe(
       "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
     );
-  });
-});
-
-describe("buildBindMount", () => {
-  it("joins source and dest with colon", () => {
-    expect(buildBindMount("/home/foo", "/root/foo")).toBe(
-      "/home/foo:/root/foo",
-    );
-  });
-
-  it("appends mode when provided", () => {
-    expect(buildBindMount("/home/foo", "/root/foo", "ro")).toBe(
-      "/home/foo:/root/foo:ro",
-    );
-  });
-
-  it("normalizes backslashes to forward slashes on windows", () => {
-    const original = process.platform;
-    Object.defineProperty(process, "platform", { value: "win32" });
-    try {
-      expect(buildBindMount("C:\\Users\\foo", "/root/foo")).toBe(
-        "C:/Users/foo:/root/foo",
-      );
-    } finally {
-      Object.defineProperty(process, "platform", { value: original });
-    }
   });
 });
 

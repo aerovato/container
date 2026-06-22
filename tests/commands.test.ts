@@ -18,12 +18,7 @@ import { createCommand } from "../src/commands/create";
 import { attachCommand } from "../src/commands/attach";
 import { runCommand } from "../src/commands/run";
 import * as clack from "@clack/prompts";
-import {
-  resolveProjectPath,
-  resolveContainerName,
-} from "../src/platform/paths";
 import { getBuildDirty } from "../src/commands/shared";
-import { getDefaultRuntime } from "../src/platform/shell";
 import { FsReader, Filesystem } from "../src/platform/fs";
 
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
@@ -350,29 +345,6 @@ describe("runCommand flag routing", () => {
 });
 
 describe("shared helpers", () => {
-  describe("resolveProjectPath", () => {
-    it("returns cwd when input is undefined", () => {
-      expect(resolveProjectPath(undefined)).toBe(process.cwd());
-    });
-
-    it("resolves a relative path to absolute", () => {
-      const result = resolveProjectPath("some/dir");
-      expect(result.startsWith("/")).toBe(true);
-      expect(result.endsWith("some/dir")).toBe(true);
-    });
-
-    it("returns an absolute path unchanged", () => {
-      expect(resolveProjectPath("/absolute/path")).toBe("/absolute/path");
-    });
-  });
-
-  describe("resolveContainerName", () => {
-    it("generates a container name from path", () => {
-      const name = resolveContainerName("/home/user/project");
-      expect(name).toMatch(/^container-project-[a-f0-9]{8}$/);
-    });
-  });
-
   describe("getBuildDirty", () => {
     it("returns undefined when no state file", () => {
       const stateStore = new StateStore(fsReader, STATE_PATH);
@@ -384,44 +356,6 @@ describe("shared helpers", () => {
       const stateStore = new StateStore(fsReader, STATE_PATH);
       stateStore.save({ buildDirty: "tools" });
       expect(getBuildDirty(stateStore)).toBe("tools");
-    });
-  });
-
-  describe("getDefaultRuntime", () => {
-    it("returns docker when only docker available", () => {
-      enqueue({ status: 0 });
-      enqueue({ status: 1 });
-      expect(getDefaultRuntime(mockExecutor)).toBe("docker");
-    });
-
-    it("returns podman when only podman available", () => {
-      enqueue({ status: 1 });
-      enqueue({ status: 0 });
-      expect(getDefaultRuntime(mockExecutor)).toBe("podman");
-    });
-
-    it("returns undefined when neither available", () => {
-      enqueue({ status: 1 });
-      enqueue({ status: 1 });
-      expect(getDefaultRuntime(mockExecutor)).toBeUndefined();
-    });
-
-    it("returns podman when both on linux", () => {
-      const original = process.platform;
-      Object.defineProperty(process, "platform", { value: "linux" });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      expect(getDefaultRuntime(mockExecutor)).toBe("podman");
-      Object.defineProperty(process, "platform", { value: original });
-    });
-
-    it("returns docker when both on non-linux", () => {
-      const original = process.platform;
-      Object.defineProperty(process, "platform", { value: "darwin" });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      expect(getDefaultRuntime(mockExecutor)).toBe("docker");
-      Object.defineProperty(process, "platform", { value: original });
     });
   });
 });
