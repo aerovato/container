@@ -2,20 +2,18 @@
 
 // eslint-disable-next-line no-restricted-imports
 import fs from "fs";
-// eslint-disable-next-line no-restricted-imports
-import { spawnSync } from "child_process";
 import * as clack from "@clack/prompts";
 import {
   SettingsStore,
   StateStore,
   FsReader,
-  SETTINGS_PATH,
-  STATE_PATH,
   ensureAppdataDir,
   ensureConfigDir,
   ensureTempDir,
 } from "./config";
-import { Runtime, Executor } from "./runtime";
+import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
+import { Runtime } from "./runtime";
+import { Executor, createExecutor } from "./platform/shell";
 import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
 import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
@@ -31,7 +29,7 @@ import { settingsCommand } from "./commands/settings";
 import { getDefaultRuntime } from "./commands/shared";
 import { stopOrphanedContainers } from "./container";
 
-const executor: Executor = { spawnSync };
+const executor: Executor = createExecutor();
 
 function setDefaultSettings(
   exec: Executor,

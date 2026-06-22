@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fs, vol } from "memfs";
-import { Runtime, Executor } from "../src/runtime";
+import { Runtime } from "../src/runtime";
+import { Executor } from "../src/platform/shell";
+import { SettingsStore, StateStore } from "../src/config";
 import {
-  SettingsStore,
-  StateStore,
   APPDATA_DIR,
   SETTINGS_PATH,
   STATE_PATH,
   TEMP_DIR,
-} from "../src/config";
+} from "../src/platform/paths";
 import { buildCommand } from "../src/commands/build";
 import { stopCommand } from "../src/commands/stop";
 import { removeCommand } from "../src/commands/remove";
@@ -20,10 +20,9 @@ import { runCommand } from "../src/commands/run";
 import * as clack from "@clack/prompts";
 import {
   resolveProjectPath,
-  resolveContainerTarget,
-  getBuildDirty,
-  getDefaultRuntime,
-} from "../src/commands/shared";
+  resolveContainerName,
+} from "../src/platform/paths";
+import { getBuildDirty, getDefaultRuntime } from "../src/commands/shared";
 import { FsReader } from "../src/config";
 
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
@@ -383,9 +382,9 @@ describe("shared helpers", () => {
     });
   });
 
-  describe("resolveContainerTarget", () => {
+  describe("resolveContainerName", () => {
     it("generates a container name from path", () => {
-      const name = resolveContainerTarget("/home/user/project");
+      const name = resolveContainerName("/home/user/project");
       expect(name).toMatch(/^container-project-[a-f0-9]{8}$/);
     });
   });

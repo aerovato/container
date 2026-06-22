@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import { fs, vol } from "memfs";
-import { SETTINGS_PATH, SettingsStore, FsReader } from "../src/config";
+import { SETTINGS_PATH } from "../src/platform/paths";
+import { SettingsStore, FsReader } from "../src/config";
 import { ensureTosAccepted, LATEST_TOS_VERSION } from "../src/tos";
 
 vi.mock("fs");

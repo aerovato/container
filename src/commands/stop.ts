@@ -1,6 +1,6 @@
 import * as clack from "@clack/prompts";
 import { Runtime } from "../runtime";
-import { resolveContainerName } from "./shared";
+import { resolveContainerName } from "../platform/paths";
 
 export function stopCommand(
   runtime: Runtime,

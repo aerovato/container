@@ -1,5 +1,6 @@
 import * as clack from "@clack/prompts";
-import { Runtime, Executor } from "../runtime";
+import { Runtime } from "../runtime";
+import { Executor } from "../platform/shell";
 import { SettingsStore, FsReader } from "../config";
 import { resolveTarget, ResolvedTarget } from "./shared";
 import { Settings } from "../types";

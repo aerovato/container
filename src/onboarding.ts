@@ -1,12 +1,13 @@
-import os from "os";
 import path from "path";
 import * as clack from "@clack/prompts";
-import { FsReader, CONFIGS_DIR, SettingsStore, StateStore } from "./config";
+import { FsReader, SettingsStore, StateStore } from "./config";
+import { CONFIGS_DIR, expandHomePath } from "./platform/paths";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
 import { buildImage } from "./docker";
-import { Executor, Runtime } from "./runtime";
+import { Runtime } from "./runtime";
+import { Executor } from "./platform/shell";
 import { getDefaultRuntime, getRuntimeAvailability } from "./commands/shared";
 
 export const LATEST_ONBOARDING_VERSION = 4;
@@ -463,12 +464,4 @@ export function migrateToolConfigs(fs: FsReader, toolIds: string[]): number {
   }
 
   return count;
-}
-
-function expandHomePath(hostPath: string): string {
-  const home = os.homedir();
-  if (hostPath.startsWith("~")) {
-    return path.join(home, hostPath.slice(1));
-  }
-  return hostPath;
 }

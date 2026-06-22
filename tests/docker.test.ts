@@ -2,21 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { Runtime, Executor } from "../src/runtime";
-import {
-  SettingsStore,
-  StateStore,
-  FsReader,
-  APPDATA_DIR,
-  TEMP_DIR,
-} from "../src/config";
+import { Runtime } from "../src/runtime";
+import { Executor } from "../src/platform/shell";
+import { APPDATA_DIR, TEMP_DIR } from "../src/platform/paths";
+import { SettingsStore, StateStore, FsReader } from "../src/config";
 import {
   generateContainerName,
-  buildImage,
   CORE_DOCKERFILE_PATH,
   TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
-} from "../src/docker";
+} from "../src/platform/paths";
+import { buildImage } from "../src/docker";
 import {
   generateDockerfileCore,
   resolveCoreConfig,

@@ -1,14 +1,5 @@
 import { Result, RuntimeBin } from "./types";
-
-export interface SpawnSyncResult {
-  status: number | null;
-  stdout: string | Buffer;
-  stderr: string | Buffer;
-}
-
-export interface Executor {
-  spawnSync(bin: string, args: string[], options?: object): SpawnSyncResult;
-}
+import { Executor } from "./platform/shell";
 
 export class Runtime {
   constructor(

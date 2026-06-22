@@ -7,6 +7,8 @@ import {
   TEMP_DIR,
   SETTINGS_PATH,
   STATE_PATH,
+} from "../src/platform/paths";
+import {
   SettingsStore,
   StateStore,
   ensureAppdataDir,

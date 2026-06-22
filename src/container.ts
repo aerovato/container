@@ -1,6 +1,6 @@
-import os from "os";
-import { Runtime, Executor } from "./runtime";
-import { CONFIGS_DIR } from "./config";
+import { Runtime } from "./runtime";
+import { Executor } from "./platform/shell";
+import { CONFIGS_DIR, homeDir } from "./platform/paths";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
@@ -11,7 +11,7 @@ export function getMounts(
   projectName: string,
   settings: Settings,
 ): string[] {
-  const home = os.homedir();
+  const home = homeDir();
   const mounts: string[] = [];
 
   mounts.push(`${projectPath}:/root/${projectName}`);

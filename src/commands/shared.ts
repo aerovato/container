@@ -1,20 +1,11 @@
 import path from "path";
 import * as clack from "@clack/prompts";
 import { StateStore, SettingsStore, FsReader } from "../config";
-import { generateContainerName, buildImage, CONTAINER_IMAGE } from "../docker";
+import { buildImage, CONTAINER_IMAGE } from "../docker";
 import { RuntimeBin } from "../types";
-import { Runtime, Executor } from "../runtime";
-
-export function resolveProjectPath(projectPath: string | undefined): string {
-  if (!projectPath) {
-    return process.cwd();
-  }
-  return path.resolve(projectPath);
-}
-
-export function resolveContainerName(target: string | undefined): string {
-  return generateContainerName(resolveProjectPath(target));
-}
+import { Runtime } from "../runtime";
+import { Executor } from "../platform/shell";
+import { generateContainerName, resolveProjectPath } from "../platform/paths";
 
 export interface ResolvedTarget {
   containerName: string;

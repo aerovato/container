@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR, FsReader } from "../src/config";
+import { CONFIGS_DIR, expandHomePath } from "../src/platform/paths";
+import { FsReader } from "../src/config";
 import {
   needsOnboarding,
   LATEST_ONBOARDING_VERSION,
@@ -10,7 +11,8 @@ import {
   migrateToolConfigs,
 } from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
-import { Executor, Runtime } from "../src/runtime";
+import { Runtime } from "../src/runtime";
+import { Executor } from "../src/platform/shell";
 
 vi.mock("fs");
 
@@ -152,20 +154,13 @@ describe("migrateHarnessConfigs (via fs)", () => {
 
 describe("expandHomePath", () => {
   it("expands tilde to home directory", () => {
-    const home = os.homedir();
-    const hostPath = "~/.claude";
-    const expanded = hostPath.startsWith("~")
-      ? path.join(home, hostPath.slice(1))
-      : hostPath;
-    expect(expanded).toBe(path.join(home, ".claude"));
+    expect(expandHomePath("~/.claude")).toBe(
+      path.join(os.homedir(), ".claude"),
+    );
   });
 
   it("returns absolute path unchanged", () => {
-    const p = "/absolute/path";
-    const expanded = p.startsWith("~")
-      ? path.join(os.homedir(), p.slice(1))
-      : p;
-    expect(expanded).toBe("/absolute/path");
+    expect(expandHomePath("/absolute/path")).toBe("/absolute/path");
   });
 });
 
