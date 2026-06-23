@@ -10,6 +10,7 @@
 
 ### Prerequisites
 
+- **A Windows, Mac, or Linux machine** (Both Windows native and WSL are now supported!)
 - **Docker or Podman** — Docker Desktop/Engine or Podman
 
 ### Installation
