@@ -2,6 +2,7 @@ import path from "path";
 import * as clack from "@clack/prompts";
 import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
+import { isLinux } from "./platform/os";
 import { CONFIGS_DIR, expandHomePath } from "./platform/paths";
 import { Settings, StateData, RuntimeBin } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
@@ -15,6 +16,10 @@ import {
 } from "./platform/shell";
 
 export const LATEST_ONBOARDING_VERSION = 4;
+
+const DEFAULT_HARNESS_IDS = ["opencode", "codex", "claude"] as const;
+
+const EXPRESS_SETUP_ALWAYS_ENABLED_HARNESS_IDS = ["opencode"] as const;
 
 export type OnboardingReason = "first-time" | "manual" | "upgrade";
 
@@ -45,6 +50,8 @@ export async function runOnboarding(
     );
   }
 
+  await promptToInstallRuntime(executor);
+
   const mode = await clack.select({
     message: "Choose setup mode",
     options: [
@@ -71,7 +78,7 @@ export async function runOnboarding(
   return result;
 }
 
-async function expressSetup(
+export async function expressSetup(
   fs: Filesystem,
   executor: Executor,
   settings: Settings,
@@ -81,9 +88,19 @@ async function expressSetup(
   const spinner = clack.spinner();
 
   spinner.start("Detecting installed harnesses");
-  const harnessIds = detectHarnesses(executor);
+  const detectedHarnessIds = detectHarnesses(executor);
+  const harnessIds = [
+    ...new Set([
+      ...EXPRESS_SETUP_ALWAYS_ENABLED_HARNESS_IDS,
+      ...(detectedHarnessIds.length > 0
+        ? detectedHarnessIds
+        : [...DEFAULT_HARNESS_IDS]),
+    ]),
+  ];
   spinner.stop(
-    `Detected ${harnessIds.length} harnesses: ${harnessIds.join(", ") || "none"}`,
+    detectedHarnessIds.length > 0
+      ? `Detected ${detectedHarnessIds.length} harnesses: ${detectedHarnessIds.join(", ")}`
+      : `No harnesses detected; enabling defaults: ${harnessIds.join(", ")}`,
   );
 
   spinner.start("Migrating harness configs");
@@ -334,6 +351,64 @@ async function confirmSSHMount(settings: Settings): Promise<boolean> {
   }
 
   return sshMount;
+}
+
+export async function promptToInstallRuntime(
+  executor: Executor,
+): Promise<void> {
+  const { docker, podman } = getRuntimeAvailability(executor);
+  if (docker || podman) return;
+
+  const instructions = isLinux()
+    ? `
+No runtime detected. A runtime (either Docker or Podman) is required for \`container\` to work.
+
+We recommend installing Podman for Linux.
+
+Install Podman: https://podman.io/docs/installation
+`.trim()
+    : `
+No runtime detected. A runtime (either Docker or Podman) is required for \`container\` to work.
+
+We recommend installing Docker Desktop for Windows or Mac.
+
+Install Docker: https://docs.docker.com/get-started/get-docker/
+`.trim();
+
+  clack.note(instructions, "No container runtime detected", {
+    format: line => line,
+  });
+
+  while (true) {
+    const choice = await clack.select({
+      message: "Choose how to continue",
+      options: [
+        { value: "continue", label: "I've installed the runtime" },
+        { value: "skip", label: "Skip without installing" },
+      ],
+    });
+
+    if (clack.isCancel(choice)) {
+      clack.cancel("Onboarding cancelled");
+      process.exit(0);
+    }
+
+    if (choice === "skip") {
+      clack.log.warn("Continuing without a runtime.");
+      return;
+    }
+
+    const recheck = getRuntimeAvailability(executor);
+    if (recheck.docker || recheck.podman) {
+      clack.log.success("Container runtime detected.");
+      return;
+    }
+
+    clack.log.error("No runtime detected on the command line.");
+    clack.log.error(
+      "Run `docker --version` or `podman --version` and verify that the runtime is available.",
+    );
+  }
 }
 
 async function selectRuntimeInteractive(
