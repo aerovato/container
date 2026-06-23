@@ -2,18 +2,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR } from "../src/platform/paths";
+import { CONFIGS_DIR, SETTINGS_PATH, STATE_PATH } from "../src/platform/paths";
 import { FsReader, Filesystem } from "../src/platform/fs";
+import { SettingsStore, StateStore } from "../src/config";
+import { Platform } from "../src/platform/os";
+import { withPlatform } from "./platform/helpers";
+import * as clack from "@clack/prompts";
 import {
   needsOnboarding,
   LATEST_ONBOARDING_VERSION,
   detectTools,
   migrateToolConfigs,
+  expressSetup,
+  promptToInstallRuntime,
 } from "../src/onboarding";
 import { HARNESS_PACKS } from "../src/harness-packs";
 import { Executor } from "../src/platform/shell";
+import { Settings } from "../src/types";
 
 vi.mock("fs");
+
+const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
   vol.reset();
@@ -192,5 +201,164 @@ describe("migrateToolConfigs", () => {
       "utf-8",
     );
     expect(content).toBe("existing = true");
+  });
+});
+
+describe("promptToInstallRuntime", () => {
+  const queue: Array<number | null> = [];
+  const executor: Executor = {
+    spawnSync() {
+      return { status: queue.shift() ?? 1, stdout: "", stderr: "" };
+    },
+  };
+
+  beforeEach(() => {
+    queue.length = 0;
+  });
+
+  it("does not prompt when docker is available", async () => {
+    queue.push(0, 1);
+    await promptToInstallRuntime(executor);
+    expect(clack.note).not.toHaveBeenCalled();
+    expect(clack.select).not.toHaveBeenCalled();
+  });
+
+  it("does not prompt when podman is available", async () => {
+    queue.push(1, 0);
+    await promptToInstallRuntime(executor);
+    expect(clack.note).not.toHaveBeenCalled();
+    expect(clack.select).not.toHaveBeenCalled();
+  });
+
+  it("shows Podman instructions on Linux and skips", async () => {
+    queue.push(1, 1);
+    vi.mocked(clack.select).mockResolvedValueOnce("skip");
+    await withPlatform(Platform.Linux, () => promptToInstallRuntime(executor));
+    expect(clack.note).toHaveBeenCalledWith(
+      expect.stringContaining("https://podman.io/docs/installation"),
+      expect.any(String),
+      expect.anything(),
+    );
+    expect(clack.select).toHaveBeenCalledTimes(1);
+    expect(clack.log.warn).toHaveBeenCalled();
+  });
+
+  it("shows Docker Desktop instructions on Windows", async () => {
+    queue.push(1, 1);
+    vi.mocked(clack.select).mockResolvedValueOnce("skip");
+    await withPlatform(Platform.Windows, () =>
+      promptToInstallRuntime(executor),
+    );
+    expect(clack.note).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "https://docs.docker.com/get-started/get-docker/",
+      ),
+      expect.any(String),
+      expect.anything(),
+    );
+  });
+
+  it("shows Docker Desktop instructions on macOS", async () => {
+    queue.push(1, 1);
+    vi.mocked(clack.select).mockResolvedValueOnce("skip");
+    await withPlatform(Platform.Macos, () => promptToInstallRuntime(executor));
+    expect(clack.note).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "https://docs.docker.com/get-started/get-docker/",
+      ),
+      expect.any(String),
+      expect.anything(),
+    );
+  });
+
+  it("proceeds when runtime becomes available after continue", async () => {
+    queue.push(1, 1, 0, 1);
+    vi.mocked(clack.select).mockResolvedValueOnce("continue");
+    await promptToInstallRuntime(executor);
+    expect(clack.log.success).toHaveBeenCalled();
+    expect(clack.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-loops on failed recheck then skips", async () => {
+    queue.push(1, 1, 1, 1);
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce("continue")
+      .mockResolvedValueOnce("skip");
+    await promptToInstallRuntime(executor);
+    expect(clack.log.error).toHaveBeenCalled();
+    expect(clack.log.warn).toHaveBeenCalled();
+    expect(clack.select).toHaveBeenCalledTimes(2);
+  });
+
+  it("exits on cancel", async () => {
+    queue.push(1, 1);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    vi.mocked(clack.select).mockResolvedValueOnce(Symbol("cancel"));
+    vi.mocked(clack.isCancel).mockReturnValueOnce(true);
+    await expect(promptToInstallRuntime(executor)).rejects.toThrow(
+      "process.exit",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    exitSpy.mockRestore();
+  });
+});
+
+describe("expressSetup", () => {
+  function makeStores(): {
+    settingsStore: SettingsStore;
+    stateStore: StateStore;
+  } {
+    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
+    fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+    return {
+      settingsStore: new SettingsStore(fsReader, SETTINGS_PATH),
+      stateStore: new StateStore(fsReader, STATE_PATH),
+    };
+  }
+
+  it("enables default harnesses when none detected", async () => {
+    const executor: Executor = {
+      spawnSync: () => ({ status: 1, stdout: "", stderr: "" }),
+    };
+    const { settingsStore, stateStore } = makeStores();
+
+    const result = await expressSetup(
+      new Filesystem(fs as unknown as FsReader),
+      executor,
+      {} as Settings,
+      settingsStore,
+      stateStore,
+    );
+
+    expect(result.settings.enabledHarnesses).toEqual([
+      "opencode",
+      "codex",
+      "claude",
+    ]);
+    expect(result.settings.runtime).toBeUndefined();
+    expect(result.state.buildDirty).toBe("harness");
+  });
+
+  it("uses detected harnesses instead of defaults", async () => {
+    const executor: Executor = {
+      spawnSync: (_bin: string, args: string[]) => ({
+        status: (args[0] ?? "") === "claude" ? 0 : 1,
+        stdout: "",
+        stderr: "",
+      }),
+    };
+    const { settingsStore, stateStore } = makeStores();
+
+    const result = await expressSetup(
+      new Filesystem(fs as unknown as FsReader),
+      executor,
+      {} as Settings,
+      settingsStore,
+      stateStore,
+    );
+
+    expect(result.settings.enabledHarnesses).toEqual(["opencode", "claude"]);
   });
 });

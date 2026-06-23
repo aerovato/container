@@ -8,6 +8,8 @@ Additions:
 - Platform abstraction layer (`src/platform/`) isolating all OS-dependent logic, enforced by an ESLint rule
 - Drive-letter path canonicalization: native Windows and WSL paths for the same project resolve to one container
 - New `internal/Specs/Windows.md` and `docs/Windows.md`
+- Add runtime installation instructions to onboarding
+- Modify onboarding to install a default set of harnesses if none are installed
 
 Changes:
 
