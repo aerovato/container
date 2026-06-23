@@ -49,6 +49,7 @@ export class ContainerClient {
   run(args: string[]): Result<void> {
     const result = this.executor.spawnSync(this.bin, ["run", ...args], {
       stdio: "inherit",
+      env: { ...process.env, DOCKER_CLI_HINTS: "false" },
     });
     if (result.status !== 0) {
       return { ok: false, error: "command_failed" };
@@ -59,6 +60,7 @@ export class ContainerClient {
   exec(args: string[]): Result<void> {
     const result = this.executor.spawnSync(this.bin, ["exec", ...args], {
       stdio: "inherit",
+      env: { ...process.env, DOCKER_CLI_HINTS: "false" },
     });
     if (result.status !== 0) {
       return { ok: false, error: "command_failed" };
