@@ -20,11 +20,15 @@ export const DockerfileCoreConfigSchema = z.object({
 });
 export type DockerfileCoreConfig = z.infer<typeof DockerfileCoreConfigSchema>;
 
-export interface ConfigMount {
+interface BaseConfigMount {
   host: string;
   config: string;
   mount: string;
 }
+
+export type ConfigMount =
+  | (BaseConfigMount & { kind: "file"; defaultContents?: string })
+  | (BaseConfigMount & { kind: "directory" });
 
 export interface HarnessPack {
   id: string;

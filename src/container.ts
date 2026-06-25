@@ -1,11 +1,14 @@
 import { ContainerClient } from "./container-client";
-import { CONFIGS_DIR, homeDir, buildBindMount } from "./platform/paths";
+import { Filesystem } from "./platform/fs";
+import { homeDir, buildBindMount } from "./platform/paths";
 import { Settings, Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
 import { CONTAINER_IMAGE } from "./docker";
+import { configMountSourcePath, ensureConfigExists } from "./config";
 
 export function getMounts(
+  fs: Filesystem,
   projectPath: string,
   projectName: string,
   settings: Settings,
@@ -20,7 +23,8 @@ export function getMounts(
     const pack = HARNESS_PACKS[id as keyof typeof HARNESS_PACKS];
     if (!pack) continue;
     for (const c of pack.config) {
-      mounts.push(buildBindMount(`${CONFIGS_DIR}/${c.config}`, c.mount));
+      ensureConfigExists(fs, c);
+      mounts.push(buildBindMount(configMountSourcePath(c), c.mount));
     }
   }
 
@@ -29,11 +33,12 @@ export function getMounts(
     const pack = TOOL_PACKS[id as keyof typeof TOOL_PACKS];
     if (!pack) continue;
     for (const c of pack.config) {
-      mounts.push(buildBindMount(`${CONFIGS_DIR}/${c.config}`, c.mount));
+      ensureConfigExists(fs, c);
+      mounts.push(buildBindMount(configMountSourcePath(c), c.mount));
     }
   }
 
-  if (settings.systemMounts?.ssh === true) {
+  if (settings.systemMounts?.ssh === true && fs.existsSync(`${home}/.ssh`)) {
     mounts.push(buildBindMount(`${home}/.ssh`, "/root/.ssh", "ro"));
   }
 
@@ -41,6 +46,7 @@ export function getMounts(
 }
 
 export function createNewContainer(
+  fs: Filesystem,
   runtime: ContainerClient,
   containerName: string,
   projectName: string,
@@ -48,7 +54,7 @@ export function createNewContainer(
   settings: Settings,
   cliFlags: string[],
 ): Result<void> {
-  const mounts = getMounts(projectPath, projectName, settings);
+  const mounts = getMounts(fs, projectPath, projectName, settings);
   const args = ["-d", "--name", containerName];
 
   args.push("-e", "TERM=xterm-256color");
@@ -56,7 +62,7 @@ export function createNewContainer(
   args.push("-w", `/root/${projectName}`);
 
   for (const mount of mounts) {
-    args.push("-v", mount);
+    args.push("--mount", mount);
   }
 
   const runFlags = settings.dockerRunFlags ?? [];

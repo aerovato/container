@@ -8,6 +8,7 @@ import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   APPDATA_DIR,
   TEMP_DIR,
+  CONFIGS_DIR,
   CORE_DOCKERFILE_PATH,
   TOOLS_DOCKERFILE_PATH,
   HARNESS_DOCKERFILE_PATH,
@@ -201,6 +202,7 @@ describe("createNewContainer", () => {
     enqueue({ status: 0 });
 
     const result = createNewContainer(
+      fsReader,
       runtime,
       "container-foo-abc12345",
       "foo",
@@ -220,8 +222,10 @@ describe("createNewContainer", () => {
     expect(runCall.args).toContain("COLORTERM=truecolor");
     expect(runCall.args).toContain("-w");
     expect(runCall.args).toContain("/root/foo");
-    expect(runCall.args).toContain("-v");
-    expect(runCall.args).toContain("/home/user/foo:/root/foo");
+    expect(runCall.args).toContain("--mount");
+    expect(runCall.args).toContain(
+      "type=bind,source=/home/user/foo,target=/root/foo",
+    );
   });
 
   it("includes cliFlags in the argument list", () => {
@@ -230,6 +234,7 @@ describe("createNewContainer", () => {
     enqueue({ status: 0 });
 
     createNewContainer(
+      fsReader,
       runtime,
       "container-foo-abc12345",
       "foo",
@@ -248,7 +253,15 @@ describe("createNewContainer", () => {
     const settings: Settings = {};
     enqueue({ status: 1 });
 
-    const result = createNewContainer(runtime, "c", "p", "/path", settings, []);
+    const result = createNewContainer(
+      fsReader,
+      runtime,
+      "c",
+      "p",
+      "/path",
+      settings,
+      [],
+    );
     expect(result.ok).toBe(false);
   });
 });
@@ -528,29 +541,82 @@ describe("getMounts", () => {
   const home = os.homedir();
 
   it("mounts project path", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {});
-    expect(mounts).toContain("/home/user/foo:/root/foo");
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {});
+    expect(mounts).toContain(
+      "type=bind,source=/home/user/foo,target=/root/foo",
+    );
   });
 
   it("mounts harness configs for enabled harnesses", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
       enabledHarnesses: ["claude"],
     });
     const claudeConfig = mounts.find(
       m => m.includes(".claude") && !m.includes(".json"),
     );
     expect(claudeConfig).toBeDefined();
+    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude")).isDirectory()).toBe(
+      true,
+    );
   });
 
-  it("mounts ssh when enabled", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {
+  it("creates missing file config sources in getMounts", () => {
+    getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledHarnesses: ["claude"],
+    });
+
+    expect(
+      fs.readFileSync(path.join(CONFIGS_DIR, ".claude.json"), "utf-8"),
+    ).toBe("{}\n");
+  });
+
+  it("creates missing tool directory config sources", () => {
+    getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledTools: ["npm-config"],
+    });
+
+    expect(fs.statSync(path.join(CONFIGS_DIR, ".npm")).isDirectory()).toBe(
+      true,
+    );
+    expect(fs.readFileSync(path.join(CONFIGS_DIR, ".npmrc"), "utf-8")).toBe("");
+  });
+
+  it("repairs wrong config source types", () => {
+    fs.mkdirSync(path.join(CONFIGS_DIR, ".claude.json"), { recursive: true });
+    fs.writeFileSync(path.join(CONFIGS_DIR, ".claude"), "not a directory");
+
+    getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledHarnesses: ["claude"],
+    });
+
+    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude.json")).isFile()).toBe(
+      true,
+    );
+    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude")).isDirectory()).toBe(
+      true,
+    );
+  });
+
+  it("mounts ssh when enabled and present", () => {
+    fs.mkdirSync(path.join(home, ".ssh"), { recursive: true });
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
       systemMounts: { ssh: true },
     });
-    expect(mounts).toContain(`${home}/.ssh:/root/.ssh:ro`);
+    expect(mounts).toContain(
+      `type=bind,source=${home}/.ssh,target=/root/.ssh,readonly`,
+    );
+  });
+
+  it("skips ssh when enabled but missing", () => {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
+      systemMounts: { ssh: true },
+    });
+    const sshMount = mounts.find(m => m.includes(".ssh"));
+    expect(sshMount).toBeUndefined();
   });
 
   it("skips ssh by default", () => {
-    const mounts = getMounts("/home/user/foo", "foo", {});
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {});
     const sshMount = mounts.find(m => m.includes(".ssh"));
     expect(sshMount).toBeUndefined();
   });

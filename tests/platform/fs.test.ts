@@ -21,6 +21,7 @@ function makeReader(overrides: Partial<FsReader> = {}): FsReader {
     readdirSync: vi.fn(),
     cpSync: vi.fn(),
     renameSync: vi.fn(),
+    rmSync: vi.fn(),
     ...overrides,
   } as unknown as FsReader;
 }
@@ -38,6 +39,7 @@ describe("Filesystem delegation", () => {
     wrap.readdirSync("/d");
     wrap.cpSync("/s", "/d");
     wrap.renameSync("/s", "/d");
+    wrap.rmSync("/d", { recursive: true });
     expect(reader.existsSync).toHaveBeenCalledWith("/a");
     expect(reader.readFileSync).toHaveBeenCalledWith("/f", "utf-8");
     expect(reader.writeFileSync).toHaveBeenCalledWith("/f", "x");
@@ -47,6 +49,7 @@ describe("Filesystem delegation", () => {
     expect(reader.readdirSync).toHaveBeenCalledWith("/d");
     expect(reader.cpSync).toHaveBeenCalledWith("/s", "/d");
     expect(reader.renameSync).toHaveBeenCalledWith("/s", "/d");
+    expect(reader.rmSync).toHaveBeenCalledWith("/d", { recursive: true });
   });
 });
 

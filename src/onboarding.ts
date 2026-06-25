@@ -1,6 +1,6 @@
 import path from "path";
 import * as clack from "@clack/prompts";
-import { SettingsStore, StateStore } from "./config";
+import { ensureConfigExists, SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import { isLinux } from "./platform/os";
 import { CONFIGS_DIR, expandHomePath } from "./platform/paths";
@@ -314,25 +314,26 @@ async function migrateConfigsInteractive(
       const sourcePath = expandHomePath(c.host);
       const destPath = path.join(CONFIGS_DIR, c.config);
 
-      if (!fs.existsSync(sourcePath)) {
-        clack.log.warn(`Source not found: ${sourcePath}`);
-        continue;
-      }
-
       if (fs.existsSync(destPath)) {
+        ensureConfigExists(fs, c);
         clack.log.warn(`Already exists: ${destPath}`);
         continue;
       }
 
       try {
-        const parentDir = path.dirname(destPath);
-        if (!fs.existsSync(parentDir)) {
-          fs.secureMkdir(parentDir);
+        if (fs.existsSync(sourcePath)) {
+          const parentDir = path.dirname(destPath);
+          if (!fs.existsSync(parentDir)) {
+            fs.secureMkdir(parentDir);
+          }
+          fs.cpSync(sourcePath, destPath, { recursive: true });
+        } else {
+          ensureConfigExists(fs, c);
         }
-        fs.cpSync(sourcePath, destPath, { recursive: true });
+        ensureConfigExists(fs, c);
         clack.log.success(`${pack.name}: ${c.config}`);
       } catch {
-        clack.log.error(`Failed: ${sourcePath}`);
+        clack.log.error(`Failed: ${destPath}`);
       }
     }
   }
@@ -494,18 +495,25 @@ function migrateHarnessConfigs(fs: Filesystem, harnessIds: string[]): number {
       const sourcePath = expandHomePath(c.host);
       const destPath = path.join(CONFIGS_DIR, c.config);
 
-      if (!fs.existsSync(sourcePath)) continue;
-      if (fs.existsSync(destPath)) continue;
+      if (fs.existsSync(destPath)) {
+        ensureConfigExists(fs, c);
+        continue;
+      }
 
       try {
-        const parentDir = path.dirname(destPath);
-        if (!fs.existsSync(parentDir)) {
-          fs.secureMkdir(parentDir);
+        if (fs.existsSync(sourcePath)) {
+          const parentDir = path.dirname(destPath);
+          if (!fs.existsSync(parentDir)) {
+            fs.secureMkdir(parentDir);
+          }
+          fs.cpSync(sourcePath, destPath, { recursive: true });
+        } else {
+          ensureConfigExists(fs, c);
         }
-        fs.cpSync(sourcePath, destPath, { recursive: true });
+        ensureConfigExists(fs, c);
         count++;
       } catch {
-        clack.log.error(`Failed to migrate: ${sourcePath}`);
+        clack.log.error(`Failed to prepare config: ${destPath}`);
       }
     }
   }
@@ -524,18 +532,25 @@ export function migrateToolConfigs(fs: Filesystem, toolIds: string[]): number {
       const sourcePath = expandHomePath(c.host);
       const destPath = path.join(CONFIGS_DIR, c.config);
 
-      if (!fs.existsSync(sourcePath)) continue;
-      if (fs.existsSync(destPath)) continue;
+      if (fs.existsSync(destPath)) {
+        ensureConfigExists(fs, c);
+        continue;
+      }
 
       try {
-        const parentDir = path.dirname(destPath);
-        if (!fs.existsSync(parentDir)) {
-          fs.secureMkdir(parentDir);
+        if (fs.existsSync(sourcePath)) {
+          const parentDir = path.dirname(destPath);
+          if (!fs.existsSync(parentDir)) {
+            fs.secureMkdir(parentDir);
+          }
+          fs.cpSync(sourcePath, destPath, { recursive: true });
+        } else {
+          ensureConfigExists(fs, c);
         }
-        fs.cpSync(sourcePath, destPath, { recursive: true });
+        ensureConfigExists(fs, c);
         count++;
       } catch {
-        clack.log.error(`Failed to migrate: ${sourcePath}`);
+        clack.log.error(`Failed to prepare config: ${destPath}`);
       }
     }
   }

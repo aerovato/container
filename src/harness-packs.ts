@@ -11,21 +11,30 @@ export const HARNESS_PACKS = {
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
     ],
     config: [
-      { host: "~/.claude", config: ".claude", mount: "/root/.claude" },
+      {
+        host: "~/.claude",
+        config: ".claude",
+        mount: "/root/.claude",
+        kind: "directory",
+      },
       {
         host: "~/.claude.json",
         config: ".claude.json",
         mount: "/root/.claude.json",
+        kind: "file",
+        defaultContents: "{}\n",
       },
       {
         host: "~/.local/state/claude",
         config: ".local/state/claude",
         mount: "/root/.local/state/claude",
+        kind: "directory",
       },
       {
         host: "~/.local/share/claude",
         config: ".local/share/claude",
         mount: "/root/.local/share/claude",
+        kind: "directory",
       },
     ],
   },
@@ -39,21 +48,25 @@ export const HARNESS_PACKS = {
         host: "~/.config/opencode",
         config: ".opencode",
         mount: "/root/.config/opencode",
+        kind: "directory",
       },
       {
         host: "~/.local/state/opencode",
         config: ".local/state/opencode",
         mount: "/root/.local/state/opencode",
+        kind: "directory",
       },
       {
         host: "~/.local/share/opencode",
         config: ".local/share/opencode",
         mount: "/root/.local/share/opencode",
+        kind: "directory",
       },
       {
         host: "~/.local/share/opentui",
         config: ".local/share/opentui",
         mount: "/root/.local/share/opentui",
+        kind: "directory",
       },
     ],
   },
@@ -62,14 +75,28 @@ export const HARNESS_PACKS = {
     name: "OpenAI Codex",
     shouldEnable: exec => commandExists(exec, "codex"),
     dockerfileLines: ["RUN npm install -g @openai/codex"],
-    config: [{ host: "~/.codex", config: ".codex", mount: "/root/.codex" }],
+    config: [
+      {
+        host: "~/.codex",
+        config: ".codex",
+        mount: "/root/.codex",
+        kind: "directory",
+      },
+    ],
   },
   gemini: {
     id: "gemini",
     name: "Gemini CLI",
     shouldEnable: exec => commandExists(exec, "gemini"),
     dockerfileLines: ["RUN npm install -g @google/gemini-cli"],
-    config: [{ host: "~/.gemini", config: ".gemini", mount: "/root/.gemini" }],
+    config: [
+      {
+        host: "~/.gemini",
+        config: ".gemini",
+        mount: "/root/.gemini",
+        kind: "directory",
+      },
+    ],
   },
   copilot: {
     id: "copilot",
@@ -77,7 +104,12 @@ export const HARNESS_PACKS = {
     shouldEnable: exec => commandExists(exec, "copilot"),
     dockerfileLines: ["RUN npm install -g @github/copilot"],
     config: [
-      { host: "~/.copilot", config: ".copilot", mount: "/root/.copilot" },
+      {
+        host: "~/.copilot",
+        config: ".copilot",
+        mount: "/root/.copilot",
+        kind: "directory",
+      },
     ],
   },
   grok: {
@@ -88,7 +120,14 @@ export const HARNESS_PACKS = {
       "RUN curl -fsSL https://x.ai/cli/install.sh | bash",
       "RUN echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
     ],
-    config: [{ host: "~/.grok", config: ".grok", mount: "/root/.grok" }],
+    config: [
+      {
+        host: "~/.grok",
+        config: ".grok",
+        mount: "/root/.grok",
+        kind: "directory",
+      },
+    ],
   },
   cursor: {
     id: "cursor",
@@ -96,16 +135,23 @@ export const HARNESS_PACKS = {
     shouldEnable: exec => commandExists(exec, "cursor-agent"),
     dockerfileLines: ["RUN curl https://cursor.com/install -fsS | bash"],
     config: [
-      { host: "~/.cursor", config: ".cursor", mount: "/root/.cursor" },
+      {
+        host: "~/.cursor",
+        config: ".cursor",
+        mount: "/root/.cursor",
+        kind: "directory",
+      },
       {
         host: "~/.config/cursor",
         config: ".config/cursor",
         mount: "/root/.config/cursor",
+        kind: "directory",
       },
       {
         host: "~/.local/share/cursor-agent",
         config: ".local/share/cursor-agent",
         mount: "/root/.local/share/cursor-agent",
+        kind: "directory",
       },
     ],
   },
@@ -114,7 +160,14 @@ export const HARNESS_PACKS = {
     name: "Aerovato Nitro",
     shouldEnable: exec => commandExists(exec, "nitro"),
     dockerfileLines: ["RUN npm install -g @aerovato/nitro"],
-    config: [{ host: "~/.nitro", config: ".nitro", mount: "/root/.nitro" }],
+    config: [
+      {
+        host: "~/.nitro",
+        config: ".nitro",
+        mount: "/root/.nitro",
+        kind: "directory",
+      },
+    ],
   },
   antigravity: {
     id: "antigravity",
@@ -129,6 +182,7 @@ export const HARNESS_PACKS = {
         host: "~/.gemini/antigravity-cli",
         config: ".gemini/antigravity-cli",
         mount: "/root/.gemini/antigravity-cli",
+        kind: "directory",
       },
     ],
   },

@@ -7,6 +7,7 @@ import { Settings } from "../types";
 import { createNewContainer } from "../container";
 
 export function createContainer(
+  fs: Filesystem,
   runtime: ContainerClient,
   settings: Settings,
   resolved: ResolvedTarget,
@@ -16,6 +17,7 @@ export function createContainer(
   clack.log.info(`Project: ${resolved.projectPath}`);
 
   const result = createNewContainer(
+    fs,
     runtime,
     resolved.containerName,
     resolved.projectName,
@@ -54,6 +56,6 @@ export async function createCommand(
     process.exit(1);
   }
 
-  createContainer(runtime, settings, resolved, cliFlags);
+  createContainer(fs, runtime, settings, resolved, cliFlags);
   clack.log.success(`Container created: ${resolved.containerName}`);
 }

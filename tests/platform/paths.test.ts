@@ -152,18 +152,18 @@ describe("resolveContainerName", () => {
 });
 
 describe("buildBindMount", () => {
-  it("joins source and dest with colon on POSIX", () => {
+  it("formats explicit bind mount on POSIX", () => {
     withPlatform(Platform.Linux, () => {
       expect(buildBindMount("/home/foo", "/root/foo")).toBe(
-        "/home/foo:/root/foo",
+        "type=bind,source=/home/foo,target=/root/foo",
       );
     });
   });
 
-  it("appends mode when provided on POSIX", () => {
+  it("appends readonly when provided on POSIX", () => {
     withPlatform(Platform.Linux, () => {
       expect(buildBindMount("/home/foo", "/root/foo", "ro")).toBe(
-        "/home/foo:/root/foo:ro",
+        "type=bind,source=/home/foo,target=/root/foo,readonly",
       );
     });
   });
@@ -171,7 +171,7 @@ describe("buildBindMount", () => {
   it("leaves backslashes untouched on POSIX", () => {
     withPlatform(Platform.Linux, () => {
       expect(buildBindMount("C:\\Users\\foo", "/root/foo")).toBe(
-        "C:\\Users\\foo:/root/foo",
+        "type=bind,source=C:\\Users\\foo,target=/root/foo",
       );
     });
   });
@@ -179,15 +179,15 @@ describe("buildBindMount", () => {
   it("normalizes backslashes to forward slashes on Windows", () => {
     withPlatform(Platform.Windows, () => {
       expect(buildBindMount("C:\\Users\\foo", "/root/foo")).toBe(
-        "C:/Users/foo:/root/foo",
+        "type=bind,source=C:/Users/foo,target=/root/foo",
       );
     });
   });
 
-  it("appends mode after normalization on Windows", () => {
+  it("appends readonly after normalization on Windows", () => {
     withPlatform(Platform.Windows, () => {
       expect(buildBindMount("C:\\Users\\foo", "/root/foo", "ro")).toBe(
-        "C:/Users/foo:/root/foo:ro",
+        "type=bind,source=C:/Users/foo,target=/root/foo,readonly",
       );
     });
   });

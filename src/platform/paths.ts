@@ -77,7 +77,8 @@ export function buildBindMount(
 ): string {
   const src = normalizePath(source);
   const dst = normalizePath(dest);
-  return mode !== undefined ? `${src}:${dst}:${mode}` : `${src}:${dst}`;
+  const mount = `type=bind,source=${src},target=${dst}`;
+  return mode === "ro" ? `${mount},readonly` : mount;
 }
 
 function normalizePath(p: string): string {
