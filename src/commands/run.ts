@@ -41,7 +41,6 @@ export async function runCommand(
     clack.log.info(
       `An update is available for \`container\`: ${updateInfo.current} → ${updateInfo.latest}`,
     );
-    // TODO: Update this prompt
-    clack.log.info("Run your installer or package manager to update");
+    clack.log.info("Run `container upgrade` to update.");
   }
 }

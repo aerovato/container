@@ -8,6 +8,7 @@ export type ParsedArgs =
   | { command: "create"; target: string | undefined; cliFlags: string[] }
   | { command: "attach"; target: string | undefined; cliFlags: string[] }
   | { command: "build"; target: BuildTarget }
+  | { command: "upgrade" }
   | { command: "init" }
   | { command: "settings" }
   | { command: "stop"; target: string | undefined }
@@ -26,6 +27,7 @@ Commands:
     create [PATH]       Create the container without attaching
     attach [PATH]       Attach to an existing container without creating
     build [TARGET]      Build the Docker image (default: full)
+    upgrade             Upgrade container
     init                Trigger onboarding
     stop                Stop the container for this project
     remove              Remove the container for this project
@@ -53,6 +55,7 @@ Examples:
     container build tools                 # Rebuild from Tools stage
     container build harness                # Rebuild from Harness stage
     container build user                   # Build User stage only
+    container upgrade                      # Upgrade container
     container settings                     # Modify settings interactively
     container init                         # Trigger onboarding
     container stop                         # Stop container for current directory
@@ -72,6 +75,7 @@ const VALID_COMMANDS = [
   "create",
   "attach",
   "build",
+  "upgrade",
   "init",
   "settings",
   "stop",
@@ -120,6 +124,7 @@ export function parseArgs(raw: string[]): ParsedArgs {
     }
     case "list":
     case "init":
+    case "upgrade":
     case "settings": {
       if (remaining.length > 0) {
         fatal([`Unexpected argument: ${remaining[0]}`]);

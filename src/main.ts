@@ -20,6 +20,7 @@ import { stopCommand } from "./commands/stop";
 import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
+import { upgradeCommand } from "./commands/upgrade";
 import { stopOrphanedContainers } from "./container";
 import { runMigration, runSetup } from "./setup";
 
@@ -56,6 +57,11 @@ async function main(): Promise<void> {
   runSetup(fsReader);
   const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
   const stateStore = new StateStore(fsReader, STATE_PATH);
+
+  if (parsed.command === "upgrade") {
+    upgradeCommand(executor, process.execPath, process.argv[1]);
+    return;
+  }
 
   if (!(await ensureTosAccepted(settingsStore))) {
     process.exit(1);

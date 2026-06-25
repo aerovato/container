@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { isWindows } from "./os";
 
 export const APPDATA_DIR = path.join(os.homedir(), ".code-container");
+export const STANDALONE_INSTALL_DIR = path.join(APPDATA_DIR, "bin");
 export const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
 export const TEMP_DIR = path.join(APPDATA_DIR, "temp");
 export const ARCHIVE_DIR = path.join(APPDATA_DIR, "archive");
