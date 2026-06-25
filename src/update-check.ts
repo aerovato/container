@@ -1,7 +1,8 @@
 import { StateStore } from "./config";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const REGISTRY_URL = "https://registry.npmjs.org/@aerovato/container/latest";
+const LATEST_RELEASE_URL =
+  "https://api.github.com/repos/aerovato/container/releases/latest";
 
 export async function maybeCheckForUpdate(
   stateStore: StateStore,
@@ -38,14 +39,14 @@ function fetchLatestVersion(): Promise<string> {
   const timeout = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error("timeout")), 2000);
   });
-  const fetchP = fetch(REGISTRY_URL)
+  const fetchP = fetch(LATEST_RELEASE_URL)
     .then(res => {
       if (!res.ok) throw new Error("bad status");
       return res.json();
     })
     .then((json: unknown) => {
-      const version = (json as { version?: unknown })?.version;
-      if (typeof version === "string") return version;
+      const tagName = (json as { tag_name?: unknown })?.tag_name;
+      if (typeof tagName === "string") return tagName.replace(/^v/, "");
       throw new Error("no version");
     });
   return Promise.race([fetchP, timeout]);

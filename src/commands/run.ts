@@ -5,8 +5,8 @@ import { Filesystem } from "../platform/fs";
 import { resolveTarget, ensureImageReady } from "./shared";
 import { createContainer } from "./create";
 import { attachToContainer } from "./attach";
-import pkg from "../../package.json";
 import { maybeCheckForUpdate } from "../update-check";
+import pkg from "../../package.json";
 
 export async function runCommand(
   runtime: ContainerClient,
@@ -41,6 +41,6 @@ export async function runCommand(
     clack.log.info(
       `An update is available for \`container\`: ${updateInfo.current} → ${updateInfo.latest}`,
     );
-    clack.log.info("Run `npm install -g @aerovato/container` to update");
+    clack.log.info("Run `container upgrade` to update.");
   }
 }

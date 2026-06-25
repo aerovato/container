@@ -17,6 +17,7 @@ import { settingsCommand } from "../src/commands/settings";
 import { createCommand } from "../src/commands/create";
 import { attachCommand } from "../src/commands/attach";
 import { runCommand } from "../src/commands/run";
+import { detectInstallSource, upgradeCommand } from "../src/commands/upgrade";
 import * as clack from "@clack/prompts";
 import { getBuildDirty } from "../src/commands/shared";
 import { FsReader, Filesystem } from "../src/platform/fs";
@@ -47,9 +48,20 @@ function enqueue(result: {
 function reset() {
   calls.length = 0;
   queue.length = 0;
+  vi.clearAllMocks();
 }
 
 const fsReader = new Filesystem(fs as unknown as FsReader);
+
+function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
+  const originalPlatform = process.platform;
+  Object.defineProperty(process, "platform", { value: platform });
+  try {
+    return fn();
+  } finally {
+    Object.defineProperty(process, "platform", { value: originalPlatform });
+  }
+}
 
 vi.mock("fs");
 
@@ -93,6 +105,99 @@ describe("buildCommand", () => {
     expect(() =>
       buildCommand(runtime, settingsStore, stateStore, fsReader, "full"),
     ).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
+});
+
+describe("upgradeCommand", () => {
+  it("detects standalone installs under ~/.code-container/bin", () => {
+    expect(
+      detectInstallSource("/root/.code-container/bin/container", undefined),
+    ).toBe("standalone");
+  });
+
+  it("detects npm installs from node_modules package path", () => {
+    expect(
+      detectInstallSource(
+        "/usr/bin/node",
+        "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+      ),
+    ).toBe("npm");
+  });
+
+  it("runs npm upgrade for npm installs", () => {
+    upgradeCommand(
+      mockExecutor,
+      "/usr/bin/node",
+      "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+    );
+    expect(calls[0]).toEqual({
+      command: "npm",
+      args: ["install", "-g", "@aerovato/container@latest"],
+      options: { stdio: "inherit" },
+    });
+  });
+
+  it("runs the shell installer for standalone Unix installs", () => {
+    withPlatform("linux", () => {
+      upgradeCommand(
+        mockExecutor,
+        "/root/.code-container/bin/container",
+        undefined,
+      );
+    });
+
+    expect(calls[0]).toEqual({
+      command: "sh",
+      args: [
+        "-c",
+        "if command -v curl >/dev/null 2>&1; then curl -fsSL https://get.container.dev/install.sh | sh; elif command -v wget >/dev/null 2>&1; then wget -qO- https://get.container.dev/install.sh | sh; else printf 'Install requires curl or wget.\\n' >&2; exit 1; fi",
+      ],
+      options: { stdio: "inherit" },
+    });
+  });
+
+  it("runs the PowerShell installer for standalone Windows installs", () => {
+    withPlatform("win32", () => {
+      upgradeCommand(
+        mockExecutor,
+        "/root/.code-container/bin/container.exe",
+        undefined,
+      );
+    });
+
+    expect(calls[0]).toEqual({
+      command: "powershell.exe",
+      args: [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "irm https://get.container.dev/install.ps1 | iex",
+      ],
+      options: { stdio: "inherit" },
+    });
+  });
+
+  it("asks the user to retry when standalone installer fails", () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    enqueue({ status: 1 });
+
+    expect(() =>
+      withPlatform("linux", () =>
+        upgradeCommand(
+          mockExecutor,
+          "/root/.code-container/bin/container",
+          undefined,
+        ),
+      ),
+    ).toThrow("process.exit");
+    expect(clack.log.error).toHaveBeenCalledWith(
+      "Standalone upgrade failed. Please retry the upgrade.",
+    );
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
   });

@@ -231,6 +231,17 @@ describe("parseArgs", () => {
     });
   });
 
+  describe("upgrade", () => {
+    it("parses upgrade", () => {
+      expect(parseArgs(["upgrade"])).toEqual({ command: "upgrade" });
+    });
+
+    it("rejects extra args", () => {
+      expect(() => parseArgs(["upgrade", "extra"])).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe("settings", () => {
     it("parses settings", () => {
       expect(parseArgs(["settings"])).toEqual({ command: "settings" });

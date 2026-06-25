@@ -2,28 +2,29 @@
   "name": "@aerovato/container",
   "version": "3.3.0",
   "description": "Manage isolated Docker containers for running coding tools on different projects",
-  "main": "dist/main.js",
+  "main": "dist/js/main.js",
   "bin": {
-    "container": "dist/main.js"
+    "container": "dist/js/main.js"
   },
   "files": [
-    "dist",
-    "scripts",
-    "resources"
+    "dist/js",
+    "dist/package.json"
   ],
   "scripts": {
-    "build": "tsc && chmod u+x dist/main.js",
+    "build": "npm run build:js && npm run build:binary",
+    "build:js": "sh scripts/build-js.sh",
+    "build:binary": "sh scripts/build-binary.sh",
+    "package:release": "sh scripts/package-release.sh",
+    "release-notes": "sh scripts/generate-release-notes.sh",
+    "release": "sh scripts/release.sh",
     "clean": "rm -rf dist",
     "typecheck": "tsc --project tsconfig.test.json",
     "test": "vitest run",
-    "start": "node dist/main.js",
+    "start": "node dist/js/main.js",
     "lint": "eslint .",
     "format": "prettier --write --ignore-unknown .",
     "precommit": "bash scripts/precommit.sh",
     "prepare": "husky",
-    "postinstall": "node scripts/postinstall.js",
-    "publish-latest": "npm run clean && npm run build && npm publish",
-    "publish-nightly": "npm run clean && npm run build && npm publish --tag nightly",
     "install-local": "npm run clean && npm run build && npm link"
   },
   "author": "kevinMEH",

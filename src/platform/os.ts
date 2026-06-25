@@ -4,6 +4,8 @@ export enum Platform {
   Macos = "darwin",
 }
 
+export type PlatformArch = "x64" | "arm64";
+
 export function getPlatform(): Platform {
   const p = process.platform;
   if (p === "win32") return Platform.Windows;
@@ -21,4 +23,10 @@ export function isLinux(): boolean {
 
 export function isMacos(): boolean {
   return getPlatform() === Platform.Macos;
+}
+
+export function getPlatformArch(): PlatformArch | undefined {
+  if (process.arch === "x64") return "x64";
+  if (process.arch === "arm64") return "arm64";
+  return undefined;
 }

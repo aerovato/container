@@ -1,9 +1,9 @@
-name: Publish to NPM
+name: Publish Release
 
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - "v*"
 
 permissions:
   id-token: write
@@ -17,7 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -26,30 +25,18 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Bump version
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VER="${TAG#v}"
-          npm version "$VER" --no-git-tag-version --allow-same-version
-
-      - name: Commit and push
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          git add package.json package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit --no-verify -m "chore(release): bump to $TAG"
-            git push origin HEAD:main
-            git tag -fa "$TAG" -m "$TAG"
-            git push -f origin "$TAG"
-          else
-            echo "No version changes detected in package files. Skipping commit and push."
-          fi
-
+      - run: sudo apt-get update && sudo apt-get install -y zip
       - run: npm ci
-      - run: npm run build
+      - run: npm run build:js
       - run: npm publish --provenance
+      - run: npm run build:binary
+      - run: npm run package:release
+      - name: Generate release notes
+        run: npm run release-notes -- "$GITHUB_REF_NAME"
+
+      - run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/checksums.txt --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

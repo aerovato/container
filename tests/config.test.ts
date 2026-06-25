@@ -151,7 +151,7 @@ describe("maybeCheckForUpdate", () => {
   it("returns update info when newer version available", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ version: "3.1.0" }),
+      json: async () => ({ tag_name: "v3.1.0" }),
     });
     const store = new StateStore(fsReader, STATE_PATH);
     const result = await maybeCheckForUpdate(store, "3.0.0");
@@ -165,7 +165,7 @@ describe("maybeCheckForUpdate", () => {
   it("returns null for same version", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ version: "3.0.0" }),
+      json: async () => ({ tag_name: "v3.0.0" }),
     });
     const store = new StateStore(fsReader, STATE_PATH);
     const result = await maybeCheckForUpdate(store, "3.0.0");
