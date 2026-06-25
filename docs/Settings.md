@@ -9,7 +9,7 @@ This is the primary configuration file for `container`. Most user preferences an
 ## Top-Level Keys
 
 - `migrationVersion` (number):
-  - Set by postinstall during V2→V3 migration.
+  - Set by runtime setup during V2→V3 migration.
   - Internal. Do not edit.
 
 - `onboardingVersion` (number):

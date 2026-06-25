@@ -19,7 +19,21 @@ If the user asks you to setup `container`, follow these steps.
 
 Do for the user, one step at a time.
 
-1. Install `container` as NPM package:
+1. Install `container`:
+
+   **macOS / Linux:**
+
+   ```bash
+   curl -fsSL https://container.aerovato.com/install.sh | sh
+   ```
+
+   **Windows:**
+
+   ```powershell
+   irm https://container.aerovato.com/install.ps1 | iex
+   ```
+
+   **Alternative — npm** (requires Node.js):
 
    ```bash
    npm install -g @aerovato/container

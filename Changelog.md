@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.4.1
+
+Fixes:
+
+- Binary targets glibc instead of musl for broader Linux compatibility
+- `container upgrade` source detection now correctly handles nvm-managed Node
+- `install.sh` PATH modification fixed
+
 ## v3.4.0
 
 Additions:

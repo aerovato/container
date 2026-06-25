@@ -15,20 +15,35 @@
 
 ### Installation
 
-1. `container` is available as an NPM package. Install with:
+**macOS / Linux:**
 
-   ```bash
-   npm uninstall -g code-container      # Uninstall V2 if present
-   npm install -g @aerovato/container   # Install container V3
-   ```
+```bash
+curl -fsSL https://container.aerovato.com/install.sh | sh
+```
 
-2. Run `container init` (interactive onboarding). It will:
-   - Detect installed harnesses (Claude Code, OpenCode, etc.)
-   - Migrate your existing configs
-   - Let you choose Docker or Podman
-   - Configure SSH and git mounts
+**Windows:**
 
-   Accept the prompt to build the image (first build can take 5+ minutes).
+```powershell
+irm https://container.aerovato.com/install.ps1 | iex
+```
+
+**Alternative via npm** (requires Node.js):
+
+```bash
+npm uninstall -g code-container      # Uninstall V2 if present
+npm install -g @aerovato/container   # Install container V3
+```
+
+### First Run
+
+Run `container init` (interactive onboarding). It will:
+
+- Detect installed harnesses (Claude Code, OpenCode, etc.)
+- Migrate your existing configs
+- Let you choose Docker or Podman
+- Configure SSH and git mounts
+
+Accept the prompt to build the image (first build can take 5+ minutes).
 
 You're done. `container` is ready to use.
 
@@ -141,6 +156,14 @@ After upgrading to V3, all configurations will be archived to `~/.code-container
 - Harness configs will be mounted inside container
 
 ## Uninstall
+
+**Binary install:**
+
+```bash
+rm -rf ~/.code-container
+```
+
+**npm install:**
 
 ```bash
 npm uninstall -g @aerovato/container

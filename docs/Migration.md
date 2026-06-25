@@ -1,6 +1,6 @@
 # V2 to V3 Migration (for AI Agents)
 
-The automatic postinstall script only archives old V2 files into `~/.code-container/archive/`. It performs no content migration.
+The automatic runtime setup only archives old V2 files into `~/.code-container/archive/`. It performs no content migration.
 
 You (the agent) must perform the actual migration by converting each old file's data into the equivalent V3 mechanisms (`settings.json` and `Dockerfile.User`).
 
