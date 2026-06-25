@@ -21,6 +21,7 @@ import { removeCommand } from "./commands/remove";
 import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
 import { stopOrphanedContainers } from "./container";
+import { runMigration, runSetup } from "./setup";
 
 const executor: Executor = createExecutor();
 
@@ -51,9 +52,8 @@ async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
   const fsReader = new Filesystem(fs);
-  fsReader.ensureAppdataDir();
-  fsReader.ensureConfigDir();
-  fsReader.ensureTempDir();
+  runMigration(fsReader);
+  runSetup(fsReader);
   const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
   const stateStore = new StateStore(fsReader, STATE_PATH);
 

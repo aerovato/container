@@ -6,6 +6,7 @@ import { isWindows } from "./os";
 export const APPDATA_DIR = path.join(os.homedir(), ".code-container");
 export const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
 export const TEMP_DIR = path.join(APPDATA_DIR, "temp");
+export const ARCHIVE_DIR = path.join(APPDATA_DIR, "archive");
 export const SETTINGS_PATH = path.join(APPDATA_DIR, "settings.json");
 export const STATE_PATH = path.join(TEMP_DIR, "state.json");
 export const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");

@@ -12,6 +12,7 @@ export type FsReader = Pick<
   | "statSync"
   | "readdirSync"
   | "cpSync"
+  | "renameSync"
 >;
 
 const FILE_MODE = 0o600;
@@ -26,6 +27,7 @@ export class Filesystem implements FsReader {
   readonly statSync: FsReader["statSync"];
   readonly readdirSync: FsReader["readdirSync"];
   readonly cpSync: FsReader["cpSync"];
+  readonly renameSync: FsReader["renameSync"];
 
   constructor(private readonly raw: FsReader) {
     this.existsSync = raw.existsSync.bind(raw);
@@ -36,6 +38,7 @@ export class Filesystem implements FsReader {
     this.statSync = raw.statSync.bind(raw);
     this.readdirSync = raw.readdirSync.bind(raw);
     this.cpSync = raw.cpSync.bind(raw);
+    this.renameSync = raw.renameSync.bind(raw);
   }
 
   secureMkdir(dirPath: string): void {
