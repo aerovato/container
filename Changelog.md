@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.4.2
+
+Fixes:
+
+- Prevent Docker bind-mount failures caused by missing config sources: file and directory config mounts are now pre-created with the correct type before mounting, and existing wrong-type sources are auto-repaired
+- Switched bind mounts from `-v` to `--mount type=bind`, which errors instead of silently creating a missing source
+- SSH mount is skipped when `~/.ssh` is absent rather than failing container creation
+
 ## v3.4.1
 
 Fixes:
