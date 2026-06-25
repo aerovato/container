@@ -63,10 +63,6 @@ asset_name() {
 }
 
 add_to_path() {
-  case ":$PATH:" in
-    *":$INSTALL_DIR:"*) return 0 ;;
-  esac
-
   profile="${PROFILE:-}"
   if [ -z "$profile" ]; then
     case "$(basename "${SHELL:-}")" in
@@ -76,14 +72,36 @@ add_to_path() {
     esac
   fi
 
-  mkdir -p "$(dirname "$profile")"
-  touch "$profile"
-  if ! grep -F "$INSTALL_DIR" "$profile" >/dev/null 2>&1; then
-    printf '\n# container\nexport PATH="%s:$PATH"\n' "$INSTALL_DIR" >> "$profile"
-    printf 'Added %s to PATH in %s\n' "$INSTALL_DIR" "$profile"
-  fi
+  add_path_file "$profile"
+
+  case "$(basename "${SHELL:-}")" in
+    zsh) add_path_file "$HOME/.zshrc" ;;
+    bash) add_path_file "$HOME/.bashrc" ;;
+    *)
+      if [ -f "$HOME/.bashrc" ]; then
+        add_path_file "$HOME/.bashrc"
+      elif [ -f "$HOME/.zshrc" ]; then
+        add_path_file "$HOME/.zshrc"
+      fi
+      ;;
+  esac
+
   printf 'Restart your shell or run this command for the current session:\n'
   printf '  export PATH="%s:$PATH"\n' "$INSTALL_DIR"
+}
+
+add_path_file() {
+  path_file="$1"
+  if [ -z "$path_file" ]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$path_file")"
+  touch "$path_file"
+  if ! grep -F "$INSTALL_DIR" "$path_file" >/dev/null 2>&1; then
+    printf '\n# container\nexport PATH="%s:$PATH"\n' "$INSTALL_DIR" >> "$path_file"
+    printf 'Added %s to PATH in %s\n' "$INSTALL_DIR" "$path_file"
+  fi
 }
 
 install_container() {
