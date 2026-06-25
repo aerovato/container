@@ -18,5 +18,5 @@ esac
 npm run release-notes "$tag"
 rm release-notes.md
 
-npm version "$tag"
+npm version "$tag" --git-tag-version
 git push origin main --follow-tags
