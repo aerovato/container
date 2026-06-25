@@ -202,6 +202,17 @@ describe("migrateToolConfigs", () => {
     );
     expect(content).toBe("existing = true");
   });
+
+  it("creates missing tool file and directory configs", () => {
+    fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+
+    migrateToolConfigs(fsReader, ["npm-config"]);
+
+    expect(fs.statSync(path.join(CONFIGS_DIR, ".npm")).isDirectory()).toBe(
+      true,
+    );
+    expect(fs.readFileSync(path.join(CONFIGS_DIR, ".npmrc"), "utf-8")).toBe("");
+  });
 });
 
 describe("promptToInstallRuntime", () => {

@@ -1,3 +1,4 @@
+import path from "path";
 import { z } from "zod";
 import {
   SettingsSchema,
@@ -5,8 +6,37 @@ import {
   Result,
   Settings,
   StateData,
+  ConfigMount,
 } from "./types";
 import { Filesystem } from "./platform/fs";
+import { CONFIGS_DIR } from "./platform/paths";
+
+export function configMountSourcePath(config: ConfigMount): string {
+  return path.join(CONFIGS_DIR, config.config);
+}
+
+export function ensureConfigExists(fs: Filesystem, config: ConfigMount): void {
+  const destPath = configMountSourcePath(config);
+
+  if (fs.existsSync(destPath)) {
+    const stat = fs.statSync(destPath);
+    if (config.kind === "file" && stat.isFile()) return;
+    if (config.kind === "directory" && stat.isDirectory()) return;
+    fs.rmSync(destPath, { recursive: true, force: true });
+  }
+
+  const parentDir = path.dirname(destPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.secureMkdir(parentDir);
+  }
+
+  if (config.kind === "file") {
+    fs.secureWriteFile(destPath, config.defaultContents ?? "");
+    return;
+  }
+
+  fs.secureMkdir(destPath);
+}
 
 function parseAndValidate<T>(
   content: string,

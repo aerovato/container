@@ -31,7 +31,7 @@ export async function runCommand(
   await ensureImageReady(runtime, settingsStore, stateStore, fs);
 
   if (!runtime.containerExists(resolved.containerName)) {
-    createContainer(runtime, settings, resolved, cliFlags);
+    createContainer(fs, runtime, settings, resolved, cliFlags);
     attachToContainer(runtime, settings, resolved, []);
   } else {
     attachToContainer(runtime, settings, resolved, cliFlags);
