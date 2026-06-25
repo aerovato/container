@@ -126,6 +126,15 @@ describe("upgradeCommand", () => {
     ).toBe("npm");
   });
 
+  it("detects npm installs from global bin shims", () => {
+    expect(
+      detectInstallSource(
+        "/Users/aerovato/.nvm/versions/node/v22.22.1/bin/node",
+        "/Users/aerovato/.nvm/versions/node/v22.22.1/bin/container",
+      ),
+    ).toBe("npm");
+  });
+
   it("runs npm upgrade for npm installs", () => {
     upgradeCommand(
       mockExecutor,
