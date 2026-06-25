@@ -29,12 +29,15 @@ export function detectInstallSource(
 
   const execName = path.basename(execPath).toLowerCase();
   const normalizedScript = normalize(scriptPath || "");
+  const scriptName = path.basename(normalizedScript).toLowerCase();
   const packageSegment = normalize(
     path.join("node_modules", "@aerovato", "container"),
   );
   if (
     (execName === "node" || execName === "node.exe")
-    && normalizedScript.includes(packageSegment)
+    && (normalizedScript.includes(packageSegment)
+      || scriptName === "container"
+      || scriptName === "container.cmd")
   ) {
     return "npm";
   }
