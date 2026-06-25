@@ -161,7 +161,7 @@ describe("upgradeCommand", () => {
       command: "sh",
       args: [
         "-c",
-        "if command -v curl >/dev/null 2>&1; then curl -fsSL https://get.container.dev/install.sh | sh; elif command -v wget >/dev/null 2>&1; then wget -qO- https://get.container.dev/install.sh | sh; else printf 'Install requires curl or wget.\\n' >&2; exit 1; fi",
+        "if command -v curl >/dev/null 2>&1; then curl -fsSL https://container.aerovato.com/install.sh | sh; elif command -v wget >/dev/null 2>&1; then wget -qO- https://container.aerovato.com/install.sh | sh; else printf 'Install requires curl or wget.\\n' >&2; exit 1; fi",
       ],
       options: { stdio: "inherit" },
     });
@@ -183,7 +183,7 @@ describe("upgradeCommand", () => {
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "irm https://get.container.dev/install.ps1 | iex",
+        "irm https://container.aerovato.com/install.ps1 | iex",
       ],
       options: { stdio: "inherit" },
     });
