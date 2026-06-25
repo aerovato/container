@@ -20,9 +20,18 @@ fi
 
 awk -v tag="$TAG" '
   $0=="## "tag {on=1; next}
-  /^## / && on {on=0}
-  on {print}
-' "$CHANGELOG" | sed '/./,$!d' | tac | sed '/./,$!d' | tac > "$OUT"
+  /^## / && on {exit}
+  on {
+    if ($0 != "") seen=1
+    if (seen) {
+      lines[++count]=$0
+      if ($0 != "") last=count
+    }
+  }
+  END {
+    for (i=1; i<=last; i++) print lines[i]
+  }
+' "$CHANGELOG" > "$OUT"
 
 if [ ! -s "$OUT" ]; then
   echo "error: no changelog entry found for $TAG in $CHANGELOG" >&2
