@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.4.0
+
+Additions:
+
+- Standalone binary distribution: install `container` as a native binary with no Node.js dependency, via hosted installer scripts `install.sh` and `install.ps1`
+- `container upgrade` command: detects whether `container` was installed via npm or as a standalone binary and runs the matching update flow
+- In-binary auto-update: standalone installs upgrade themselves by re-invoking the hosted installers
+- CI workflow that compiles Bun standalone binaries, packages release assets, and creates the GitHub Release on tag
+
+Changes:
+
+- Runtime setup and V2→V3 migration moved from the npm `postinstall` hook into CLI startup (`src/setup.ts`); the `Dockerfile.User` template is now embedded, so the standalone binary has no bundled file dependencies
+- Removed `scripts/postinstall.js`
+
 ## v3.3.0
 
 Additions:
