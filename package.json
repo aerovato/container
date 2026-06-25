@@ -7,11 +7,12 @@
     "container": "dist/js/main.js"
   },
   "files": [
-    "dist/js"
+    "dist/js",
+    "dist/package.json"
   ],
   "scripts": {
     "build": "npm run build:js && npm run build:binary",
-    "build:js": "tsc && chmod u+x dist/js/main.js",
+    "build:js": "sh scripts/build-js.sh",
     "build:binary": "sh scripts/build-binary.sh",
     "package:release": "sh scripts/package-release.sh",
     "release": "sh scripts/publish.sh",
