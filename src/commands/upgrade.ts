@@ -5,8 +5,8 @@ import { isWindows } from "../platform/os";
 import { STANDALONE_INSTALL_DIR } from "../platform/paths";
 
 const REPO_URL = "https://github.com/aerovato/container";
-const INSTALL_SH_URL = "https://get.container.dev/install.sh";
-const INSTALL_PS1_URL = "https://get.container.dev/install.ps1";
+const INSTALL_SH_URL = "https://container.aerovato.com/install.sh";
+const INSTALL_PS1_URL = "https://container.aerovato.com/install.ps1";
 
 type InstallSource = "standalone" | "npm" | "unknown";
 
