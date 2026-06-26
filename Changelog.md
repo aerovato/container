@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.4.3
+
+Fixes:
+
+- Windows standalone installer now verifies release checksums with .NET SHA256 hashing instead of `Get-FileHash`, fixing `container upgrade` on systems where the cmdlet is unavailable in the spawned PowerShell session
+
 ## v3.4.2
 
 Fixes:
