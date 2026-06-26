@@ -87,7 +87,15 @@ function Install-Container {
     }
 
     $Expected = ($ChecksumLine.Line -split "\s+")[0].ToLowerInvariant()
-    $Actual = (Get-FileHash -Algorithm SHA256 $ArchivePath).Hash.ToLowerInvariant()
+    $Stream = [System.IO.File]::OpenRead($ArchivePath)
+    try {
+      $Hasher = [System.Security.Cryptography.SHA256]::Create()
+      $HashBytes = $Hasher.ComputeHash($Stream)
+      $Actual = [System.BitConverter]::ToString($HashBytes).Replace("-", "").ToLowerInvariant()
+    } finally {
+      $Stream.Close()
+    }
+
     if ($Expected -ne $Actual) {
       Write-Host "Checksum verification failed for $Archive. Please rerun the installer."
       return 1
