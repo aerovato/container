@@ -79,7 +79,7 @@ describe("StateStore", () => {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
     fs.writeFileSync(
       STATE_PATH,
-      JSON.stringify({ buildDirty: "harness", lastUpdateCheck: 123 }),
+      JSON.stringify({ buildDirty: "harness", lastUpgradeTime: 123 }),
     );
     const store = new StateStore(fsReader, STATE_PATH);
     const result = store.load();
@@ -87,7 +87,7 @@ describe("StateStore", () => {
     if (!result.ok) return;
     expect(result.value).toEqual({
       buildDirty: "harness",
-      lastUpdateCheck: 123,
+      lastUpgradeTime: 123,
     });
   });
 
@@ -136,11 +136,11 @@ describe("maybeCheckForUpdate", () => {
     mockFetch.mockReset();
   });
 
-  it("skips check if within one day", async () => {
+  it("skips check if upgraded within one day", async () => {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
     fs.writeFileSync(
       STATE_PATH,
-      JSON.stringify({ lastUpdateCheck: Date.now() - 1000 }),
+      JSON.stringify({ lastUpgradeTime: Date.now() - 1000 }),
     );
     const store = new StateStore(fsReader, STATE_PATH);
     const result = await maybeCheckForUpdate(store, "3.0.0");
@@ -156,10 +156,6 @@ describe("maybeCheckForUpdate", () => {
     const store = new StateStore(fsReader, STATE_PATH);
     const result = await maybeCheckForUpdate(store, "3.0.0");
     expect(result).toEqual({ current: "3.0.0", latest: "3.1.0" });
-    const saved = store.load();
-    if (saved.ok) {
-      expect(saved.value.lastUpdateCheck).toBeGreaterThan(Date.now() - 10000);
-    }
   });
 
   it("returns null for same version", async () => {
@@ -172,14 +168,14 @@ describe("maybeCheckForUpdate", () => {
     expect(result).toBe(null);
   });
 
-  it("returns null and updates timestamp on fetch failure", async () => {
+  it("returns null and does not update state on fetch failure", async () => {
     mockFetch.mockRejectedValue(new Error("network"));
     const store = new StateStore(fsReader, STATE_PATH);
     const result = await maybeCheckForUpdate(store, "3.0.0");
     expect(result).toBe(null);
     const saved = store.load();
     if (saved.ok) {
-      expect(typeof saved.value.lastUpdateCheck).toBe("number");
+      expect(saved.value.lastUpgradeTime).toBeUndefined();
     }
   });
 });

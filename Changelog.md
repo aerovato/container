@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.4.6
+
+Changes:
+
+- Rewrite update notification throttling to skip checks only within one day of a successful `container upgrade`
+
 ## v3.4.5
 
 Fixes:

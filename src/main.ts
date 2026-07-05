@@ -59,7 +59,7 @@ async function main(): Promise<void> {
   const stateStore = new StateStore(fsReader, STATE_PATH);
 
   if (parsed.command === "upgrade") {
-    upgradeCommand(executor, process.execPath, process.argv[1]);
+    upgradeCommand(executor, stateStore, process.execPath, process.argv[1]);
     return;
   }
 

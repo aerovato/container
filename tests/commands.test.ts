@@ -136,8 +136,10 @@ describe("upgradeCommand", () => {
   });
 
   it("runs npm upgrade for npm installs", () => {
+    const stateStore = new StateStore(fsReader, STATE_PATH);
     upgradeCommand(
       mockExecutor,
+      stateStore,
       "/usr/bin/node",
       "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
     );
@@ -146,12 +148,17 @@ describe("upgradeCommand", () => {
       args: ["install", "-g", "@aerovato/container@latest"],
       options: { stdio: "inherit" },
     });
+    const saved = stateStore.load();
+    if (saved.ok) {
+      expect(saved.value.lastUpgradeTime).toBeGreaterThan(Date.now() - 10000);
+    }
   });
 
   it("runs the shell installer for standalone Unix installs", () => {
     withPlatform("linux", () => {
       upgradeCommand(
         mockExecutor,
+        new StateStore(fsReader, STATE_PATH),
         "/root/.code-container/bin/container",
         undefined,
       );
@@ -171,6 +178,7 @@ describe("upgradeCommand", () => {
     withPlatform("win32", () => {
       upgradeCommand(
         mockExecutor,
+        new StateStore(fsReader, STATE_PATH),
         "/root/.code-container/bin/container.exe",
         undefined,
       );
@@ -199,6 +207,7 @@ describe("upgradeCommand", () => {
       withPlatform("linux", () =>
         upgradeCommand(
           mockExecutor,
+          new StateStore(fsReader, STATE_PATH),
           "/root/.code-container/bin/container",
           undefined,
         ),
@@ -208,6 +217,10 @@ describe("upgradeCommand", () => {
       "Standalone upgrade failed. Please retry the upgrade.",
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
+    const saved = new StateStore(fsReader, STATE_PATH).load();
+    if (saved.ok) {
+      expect(saved.value.lastUpgradeTime).toBeUndefined();
+    }
     exitSpy.mockRestore();
   });
 });
@@ -414,7 +427,7 @@ describe("attachCommand", () => {
 describe("runCommand flag routing", () => {
   it("on create: routes cliFlags to docker run, not exec", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
-    stateStore.save({ lastUpdateCheck: Date.now() });
+    stateStore.save({ lastUpgradeTime: Date.now() });
     const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 1 });
@@ -438,7 +451,7 @@ describe("runCommand flag routing", () => {
 
   it("on attach: routes cliFlags to docker exec", async () => {
     const { settingsStore, stateStore } = setupSessionStores();
-    stateStore.save({ lastUpdateCheck: Date.now() });
+    stateStore.save({ lastUpgradeTime: Date.now() });
     const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0 });

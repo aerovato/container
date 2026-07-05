@@ -3,6 +3,7 @@ import * as clack from "@clack/prompts";
 import { Executor } from "../platform/shell";
 import { isWindows } from "../platform/os";
 import { STANDALONE_INSTALL_DIR } from "../platform/paths";
+import { StateStore } from "../config";
 
 const REPO_URL = "https://github.com/aerovato/container";
 const INSTALL_SH_URL = "https://container.aerovato.com/install.sh";
@@ -47,6 +48,7 @@ export function detectInstallSource(
 
 export function upgradeCommand(
   executor: Executor,
+  stateStore: StateStore,
   execPath: string,
   scriptPath: string | undefined,
 ): void {
@@ -54,15 +56,23 @@ export function upgradeCommand(
 
   if (source === "npm") {
     upgradeNpm(executor);
+    recordUpgrade(stateStore);
     return;
   }
 
   if (source === "standalone") {
     upgradeStandalone(executor);
+    recordUpgrade(stateStore);
     return;
   }
 
   showUnknownInstallPrompt();
+}
+
+function recordUpgrade(stateStore: StateStore): void {
+  const stateResult = stateStore.load();
+  const state = stateResult.ok ? stateResult.value : {};
+  stateStore.save({ ...state, lastUpgradeTime: Date.now() });
 }
 
 function showUnknownInstallPrompt(): void {

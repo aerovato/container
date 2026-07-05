@@ -15,16 +15,13 @@ export async function maybeCheckForUpdate(
   const state = stateResult.value;
   const now = Date.now();
   if (
-    state.lastUpdateCheck !== undefined
-    && now - state.lastUpdateCheck < ONE_DAY_MS
+    state.lastUpgradeTime !== undefined
+    && now - state.lastUpgradeTime < ONE_DAY_MS
   ) {
     return null;
   }
 
   const latest = await fetchLatestVersion().catch(() => null);
-
-  const updatedState = { ...state, lastUpdateCheck: now };
-  stateStore.save(updatedState);
 
   if (latest === null || latest === currentVersion) {
     return null;

@@ -67,6 +67,6 @@ export type Settings = z.infer<typeof SettingsSchema>;
 
 export const StateSchema = z.object({
   buildDirty: z.enum(["tools", "harness"]).optional(),
-  lastUpdateCheck: z.number().optional(),
+  lastUpgradeTime: z.number().optional(),
 });
 export type StateData = z.infer<typeof StateSchema>;
