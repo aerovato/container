@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.4.4
+
+Additions:
+
+- First class support for Pi (`@earendil-works/pi-coding-agent`), mounting `~/.pi` → `/root/.pi`
+- `agents-directory` tool pack mounting the shared `~/.agents` → `/root/.agents`, enabled by default
+
 ## v3.4.3
 
 Fixes:
