@@ -8,6 +8,7 @@ export type ParsedArgs =
   | { command: "create"; target: string | undefined; cliFlags: string[] }
   | { command: "attach"; target: string | undefined; cliFlags: string[] }
   | { command: "build"; target: BuildTarget }
+  | { command: "version" }
   | { command: "upgrade" }
   | { command: "init" }
   | { command: "settings" }
@@ -27,6 +28,7 @@ Commands:
     create [PATH]       Create the container without attaching
     attach [PATH]       Attach to an existing container without creating
     build [TARGET]      Build the Docker image (default: full)
+    version             Print container version
     upgrade             Upgrade container
     init                Trigger onboarding
     stop                Stop the container for this project
@@ -55,6 +57,7 @@ Examples:
     container build tools                 # Rebuild from Tools stage
     container build harness                # Rebuild from Harness stage
     container build user                   # Build User stage only
+    container version                      # Print container version
     container upgrade                      # Upgrade container
     container settings                     # Modify settings interactively
     container init                         # Trigger onboarding
@@ -75,6 +78,7 @@ const VALID_COMMANDS = [
   "create",
   "attach",
   "build",
+  "version",
   "upgrade",
   "init",
   "settings",
@@ -104,6 +108,13 @@ export function parseArgs(raw: string[]): ParsedArgs {
     usage();
   }
 
+  if (first === "--version") {
+    if (raw.length > 1) {
+      fatal([`Unexpected argument: ${raw[1]}`]);
+    }
+    return { command: "version" };
+  }
+
   if (!VALID_COMMANDS.includes(first)) {
     fatal([`Unknown command: ${first}`]);
   }
@@ -124,6 +135,7 @@ export function parseArgs(raw: string[]): ParsedArgs {
     }
     case "list":
     case "init":
+    case "version":
     case "upgrade":
     case "settings": {
       if (remaining.length > 0) {

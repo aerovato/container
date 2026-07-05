@@ -23,6 +23,7 @@ import { settingsCommand } from "./commands/settings";
 import { upgradeCommand } from "./commands/upgrade";
 import { stopOrphanedContainers } from "./container";
 import { runMigration, runSetup } from "./setup";
+import pkg from "../package.json";
 
 const executor: Executor = createExecutor();
 
@@ -52,6 +53,11 @@ function setDefaultSettings(
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
+  if (parsed.command === "version") {
+    console.log(pkg.version);
+    return;
+  }
+
   const fsReader = new Filesystem(fs);
   runMigration(fsReader);
   runSetup(fsReader);
@@ -59,7 +65,12 @@ async function main(): Promise<void> {
   const stateStore = new StateStore(fsReader, STATE_PATH);
 
   if (parsed.command === "upgrade") {
-    upgradeCommand(executor, stateStore, process.execPath, process.argv[1]);
+    await upgradeCommand(
+      executor,
+      stateStore,
+      process.execPath,
+      process.argv[1],
+    );
     return;
   }
 
