@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fs, vol } from "memfs";
 import { ContainerClient } from "../src/container-client";
 import { Executor } from "../src/platform/shell";
@@ -56,11 +56,14 @@ const fsReader = new Filesystem(fs as unknown as FsReader);
 function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
   const originalPlatform = process.platform;
   Object.defineProperty(process, "platform", { value: platform });
-  try {
-    return fn();
-  } finally {
-    Object.defineProperty(process, "platform", { value: originalPlatform });
+  const result = fn();
+  if (result instanceof Promise) {
+    return result.finally(() => {
+      Object.defineProperty(process, "platform", { value: originalPlatform });
+    }) as T;
   }
+  Object.defineProperty(process, "platform", { value: originalPlatform });
+  return result;
 }
 
 vi.mock("fs");
@@ -111,6 +114,16 @@ describe("buildCommand", () => {
 });
 
 describe("upgradeCommand", () => {
+  const mockFetch = vi.fn();
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("detects standalone installs under ~/.code-container/bin", () => {
     expect(
       detectInstallSource("/root/.code-container/bin/container", undefined),
@@ -135,9 +148,13 @@ describe("upgradeCommand", () => {
     ).toBe("npm");
   });
 
-  it("runs npm upgrade for npm installs", () => {
+  it("runs npm upgrade for npm installs", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tag_name: "v99.0.0" }),
+    });
     const stateStore = new StateStore(fsReader, STATE_PATH);
-    upgradeCommand(
+    await upgradeCommand(
       mockExecutor,
       stateStore,
       "/usr/bin/node",
@@ -154,9 +171,53 @@ describe("upgradeCommand", () => {
     }
   });
 
-  it("runs the shell installer for standalone Unix installs", () => {
-    withPlatform("linux", () => {
-      upgradeCommand(
+  it("skips upgrade when already current", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tag_name: "v3.4.6" }),
+    });
+
+    await upgradeCommand(
+      mockExecutor,
+      new StateStore(fsReader, STATE_PATH),
+      "/usr/bin/node",
+      "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+    );
+
+    expect(calls).toEqual([]);
+    expect(clack.log.info).toHaveBeenCalledWith(
+      "container is already up to date (3.4.6).",
+    );
+  });
+
+  it("skips upgrade when latest version check fails", async () => {
+    mockFetch.mockRejectedValue(new Error("network"));
+    const stateStore = new StateStore(fsReader, STATE_PATH);
+
+    await upgradeCommand(
+      mockExecutor,
+      stateStore,
+      "/usr/bin/node",
+      "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+    );
+
+    expect(calls).toEqual([]);
+    expect(clack.log.error).toHaveBeenCalledWith(
+      "Unable to check latest version. Please retry later.",
+    );
+    const saved = stateStore.load();
+    if (saved.ok) {
+      expect(saved.value.lastUpgradeTime).toBeUndefined();
+    }
+  });
+
+  it("runs the shell installer for standalone Unix installs", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tag_name: "v99.0.0" }),
+    });
+    await withPlatform("linux", () => {
+      return upgradeCommand(
         mockExecutor,
         new StateStore(fsReader, STATE_PATH),
         "/root/.code-container/bin/container",
@@ -174,9 +235,13 @@ describe("upgradeCommand", () => {
     });
   });
 
-  it("runs the PowerShell installer for standalone Windows installs", () => {
-    withPlatform("win32", () => {
-      upgradeCommand(
+  it("runs the PowerShell installer for standalone Windows installs", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tag_name: "v99.0.0" }),
+    });
+    await withPlatform("win32", () => {
+      return upgradeCommand(
         mockExecutor,
         new StateStore(fsReader, STATE_PATH),
         "/root/.code-container/bin/container.exe",
@@ -197,13 +262,17 @@ describe("upgradeCommand", () => {
     });
   });
 
-  it("asks the user to retry when standalone installer fails", () => {
+  it("asks the user to retry when standalone installer fails", async () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ tag_name: "v99.0.0" }),
+    });
     enqueue({ status: 1 });
 
-    expect(() =>
+    await expect(
       withPlatform("linux", () =>
         upgradeCommand(
           mockExecutor,
@@ -212,7 +281,7 @@ describe("upgradeCommand", () => {
           undefined,
         ),
       ),
-    ).toThrow("process.exit");
+    ).rejects.toThrow("process.exit");
     expect(clack.log.error).toHaveBeenCalledWith(
       "Standalone upgrade failed. Please retry the upgrade.",
     );

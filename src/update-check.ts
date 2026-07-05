@@ -32,7 +32,7 @@ export async function maybeCheckForUpdate(
   return null;
 }
 
-function fetchLatestVersion(): Promise<string> {
+export function fetchLatestVersion(): Promise<string> {
   const timeout = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error("timeout")), 2000);
   });
@@ -49,7 +49,7 @@ function fetchLatestVersion(): Promise<string> {
   return Promise.race([fetchP, timeout]);
 }
 
-function isNewerVersion(latest: string, current: string): boolean {
+export function isNewerVersion(latest: string, current: string): boolean {
   const lParts = latest.split(".").map(p => parseInt(p, 10) || 0);
   const cParts = current.split(".").map(p => parseInt(p, 10) || 0);
   const maxLen = Math.max(lParts.length, cParts.length);

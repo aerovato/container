@@ -242,6 +242,26 @@ describe("parseArgs", () => {
     });
   });
 
+  describe("version", () => {
+    it("parses version", () => {
+      expect(parseArgs(["version"])).toEqual({ command: "version" });
+    });
+
+    it("parses --version", () => {
+      expect(parseArgs(["--version"])).toEqual({ command: "version" });
+    });
+
+    it("rejects extra args after --version", () => {
+      expect(() => parseArgs(["--version", "extra"])).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("rejects extra args", () => {
+      expect(() => parseArgs(["version", "extra"])).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe("settings", () => {
     it("parses settings", () => {
       expect(parseArgs(["settings"])).toEqual({ command: "settings" });

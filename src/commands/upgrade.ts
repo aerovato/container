@@ -4,6 +4,8 @@ import { Executor } from "../platform/shell";
 import { isWindows } from "../platform/os";
 import { STANDALONE_INSTALL_DIR } from "../platform/paths";
 import { StateStore } from "../config";
+import { fetchLatestVersion, isNewerVersion } from "../update-check";
+import pkg from "../../package.json";
 
 const REPO_URL = "https://github.com/aerovato/container";
 const INSTALL_SH_URL = "https://container.aerovato.com/install.sh";
@@ -46,13 +48,23 @@ export function detectInstallSource(
   return "unknown";
 }
 
-export function upgradeCommand(
+export async function upgradeCommand(
   executor: Executor,
   stateStore: StateStore,
   execPath: string,
   scriptPath: string | undefined,
-): void {
+): Promise<void> {
   const source = detectInstallSource(execPath, scriptPath);
+
+  const latest = await fetchLatestVersion().catch(() => null);
+  if (latest === null) {
+    clack.log.error("Unable to check latest version. Please retry later.");
+    return;
+  }
+  if (!isNewerVersion(latest, pkg.version)) {
+    clack.log.info(`container is already up to date (${pkg.version}).`);
+    return;
+  }
 
   if (source === "npm") {
     upgradeNpm(executor);
