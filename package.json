@@ -1,6 +1,6 @@
 {
   "name": "@aerovato/container",
-  "version": "3.4.5",
+  "version": "3.4.6",
   "description": "Manage isolated Docker containers for running coding tools on different projects",
   "main": "dist/js/main.js",
   "bin": {
