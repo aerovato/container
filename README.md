@@ -39,6 +39,7 @@ npm install -g @aerovato/container   # Install container V3
 Run `container init` (interactive onboarding). It will:
 
 - Detect installed harnesses (Claude Code, OpenCode, etc.)
+- Detect installed dev tools and let you choose which to enable
 - Migrate your existing configs
 - Let you choose Docker or Podman
 - Configure SSH and git mounts
@@ -80,6 +81,7 @@ You may want to periodically rebuild the image to update harnesses and packages:
 
 ```bash
 container build               # Trigger full rebuild
+container build tools         # Rebuild dev tools, harnesses, and user packages
 container build harness       # Rebuild harnesses and user packages
 container build user          # Rebuild user packages
 ```
@@ -122,6 +124,7 @@ Primary configuration file. See [docs/Settings.md](docs/Settings.md) for more de
 Common settings:
 
 - `enabledHarnesses` — which harnesses to install
+- `enabledTools` — which dev tools and configs to include
 - `runtime` — `"docker"` or `"podman"`
 - `dockerfileCore` — advanced control over the base image
 - `systemMounts` — gitconfig and SSH mounts
@@ -136,10 +139,10 @@ After upgrading to V3, all configurations will be archived to `~/.code-container
 ## Features
 
 - **Isolation** — Destructive actions stay inside the container
-- **3-Stage Builds** — Core → Harness → User (rebuild only what changed)
+- **Harness Packs** — Choose which coding harnesses to install
+- **Tool Packs** — Choose which dev tools and configs to include
 - **Configurable Runtime** — Docker or Podman
 - **Cross-Platform** — Linux, macOS, Windows (both native and WSL)
-- **Harness Packs** — Choose exactly which tools to enable
 - **Persistent State** — Workspaces and configs survive across sessions
 - **Simultaneous Work** — Multiple agents can safely work on the same project
 
