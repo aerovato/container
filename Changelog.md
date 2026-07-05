@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.4.5
+
+Fixes:
+
+- Stop mounting Claude Code's install directory, preventing persisted config mounts from shadowing the image-installed Claude binary versions
+
 ## v3.4.4
 
 Additions:
