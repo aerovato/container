@@ -84,6 +84,20 @@ export const HARNESS_PACKS = {
       },
     ],
   },
+  pi: {
+    id: "pi",
+    name: "Pi",
+    shouldEnable: exec => commandExists(exec, "pi"),
+    dockerfileLines: ["RUN npm install -g @earendil-works/pi-coding-agent"],
+    config: [
+      {
+        host: "~/.pi",
+        config: ".pi",
+        mount: "/root/.pi",
+        kind: "directory",
+      },
+    ],
+  },
   gemini: {
     id: "gemini",
     name: "Gemini CLI",

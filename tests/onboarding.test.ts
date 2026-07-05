@@ -179,6 +179,7 @@ describe("detectTools", () => {
       "git-config",
       "vim-config",
       "deno",
+      "agents-directory",
     ]);
   });
 });
