@@ -59,6 +59,20 @@ export const TOOL_PACKS = {
       },
     ],
   },
+  "agents-directory": {
+    id: "agents-directory",
+    name: "Agents Directory (~/.agents)",
+    shouldEnable: () => true,
+    dockerfileLines: [],
+    config: [
+      {
+        host: "~/.agents",
+        config: ".agents",
+        mount: "/root/.agents",
+        kind: "directory",
+      },
+    ],
+  },
   "npm-config": {
     id: "npm-config",
     name: "Npm Config",
