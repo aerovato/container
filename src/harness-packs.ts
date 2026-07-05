@@ -30,12 +30,6 @@ export const HARNESS_PACKS = {
         mount: "/root/.local/state/claude",
         kind: "directory",
       },
-      {
-        host: "~/.local/share/claude",
-        config: ".local/share/claude",
-        mount: "/root/.local/share/claude",
-        kind: "directory",
-      },
     ],
   },
   opencode: {

@@ -570,6 +570,16 @@ describe("getMounts", () => {
     ).toBe("{}\n");
   });
 
+  it("does not mount Claude's install directory", () => {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledHarnesses: ["claude"],
+    });
+
+    expect(
+      mounts.find(m => m.includes("target=/root/.local/share/claude")),
+    ).toBeUndefined();
+  });
+
   it("creates missing tool directory config sources", () => {
     getMounts(fsReader, "/home/user/foo", "foo", {
       enabledTools: ["npm-config"],
