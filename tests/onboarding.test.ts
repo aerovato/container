@@ -175,11 +175,11 @@ describe("detectTools", () => {
       "python",
       "bun",
       "enhanced-tools",
+      "agents-directory",
       "npm-config",
       "git-config",
       "vim-config",
       "deno",
-      "agents-directory",
     ]);
   });
 });
