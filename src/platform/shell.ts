@@ -40,3 +40,67 @@ export function getDefaultRuntime(executor: Executor): RuntimeBin | undefined {
   if (!docker && podman) return "podman";
   return isLinux() ? "podman" : "docker";
 }
+
+const RUNTIME_READY_ATTEMPTS = 15;
+const RUNTIME_READY_DELAY_MS = 1000;
+
+function runtimeReady(executor: Executor, runtime: RuntimeBin): boolean {
+  return executor.spawnSync(runtime, ["info"], { stdio: "pipe" }).status === 0;
+}
+
+function waitForRuntime(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, RUNTIME_READY_DELAY_MS));
+}
+
+function startDocker(executor: Executor): boolean {
+  if (isLinux()) {
+    const userServiceStatus = executor.spawnSync(
+      "systemctl",
+      ["--user", "start", "docker"],
+      { stdio: "pipe" },
+    ).status;
+    if (userServiceStatus === 0) return true;
+
+    return (
+      executor.spawnSync("sudo", ["systemctl", "start", "docker"], {
+        stdio: "inherit",
+      }).status === 0
+    );
+  }
+
+  return (
+    executor.spawnSync("docker", ["desktop", "start"], {
+      stdio: "pipe",
+    }).status === 0
+  );
+}
+
+function startPodman(executor: Executor): boolean {
+  return (
+    executor.spawnSync("podman", ["machine", "start"], {
+      stdio: "pipe",
+    }).status === 0
+  );
+}
+
+export async function ensureRuntimeReady(
+  executor: Executor,
+  runtime: RuntimeBin,
+  onStart: () => void,
+): Promise<boolean> {
+  if (runtimeReady(executor, runtime)) return true;
+  if (runtime === "podman" && isLinux()) return false;
+
+  onStart();
+
+  const started =
+    runtime === "docker" ? startDocker(executor) : startPodman(executor);
+  if (!started) return false;
+
+  for (let attempt = 0; attempt < RUNTIME_READY_ATTEMPTS; attempt++) {
+    if (runtimeReady(executor, runtime)) return true;
+    if (attempt < RUNTIME_READY_ATTEMPTS - 1) await waitForRuntime();
+  }
+
+  return false;
+}

@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   Executor,
   createExecutor,
   commandExists,
+  ensureRuntimeReady,
   getRuntimeAvailability,
   getDefaultRuntime,
 } from "../../src/platform/shell";
@@ -124,5 +125,96 @@ describe("getDefaultRuntime", () => {
       enqueue(0, 0);
       expect(getDefaultRuntime(executor)).toBe("docker");
     });
+  });
+});
+
+describe("ensureRuntimeReady", () => {
+  it("returns immediately when the runtime is ready", async () => {
+    const onStart = vi.fn();
+    enqueue(0);
+
+    await expect(ensureRuntimeReady(executor, "docker", onStart)).resolves.toBe(
+      true,
+    );
+    expect(calls).toEqual([{ bin: "docker", args: ["info"] }]);
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it("starts Docker Desktop and waits for readiness", async () => {
+    vi.useFakeTimers();
+    enqueue(1, 0, 1, 0);
+
+    const result = withPlatform(Platform.Macos, () =>
+      ensureRuntimeReady(executor, "docker", vi.fn()),
+    );
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(result).resolves.toBe(true);
+    expect(calls).toEqual([
+      { bin: "docker", args: ["info"] },
+      { bin: "docker", args: ["desktop", "start"] },
+      { bin: "docker", args: ["info"] },
+      { bin: "docker", args: ["info"] },
+    ]);
+    vi.useRealTimers();
+  });
+
+  it("falls back to the rootless Docker service on Linux", async () => {
+    enqueue(1, 0, 0);
+
+    const result = await withPlatform(Platform.Linux, () =>
+      ensureRuntimeReady(executor, "docker", vi.fn()),
+    );
+
+    expect(result).toBe(true);
+    expect(calls).toEqual([
+      { bin: "docker", args: ["info"] },
+      { bin: "systemctl", args: ["--user", "start", "docker"] },
+      { bin: "docker", args: ["info"] },
+    ]);
+  });
+
+  it("starts the system Docker service on Linux", async () => {
+    enqueue(1, 1, 0, 0);
+
+    const result = await withPlatform(Platform.Linux, () =>
+      ensureRuntimeReady(executor, "docker", vi.fn()),
+    );
+
+    expect(result).toBe(true);
+    expect(calls).toEqual([
+      { bin: "docker", args: ["info"] },
+      { bin: "systemctl", args: ["--user", "start", "docker"] },
+      { bin: "sudo", args: ["systemctl", "start", "docker"] },
+      { bin: "docker", args: ["info"] },
+    ]);
+  });
+
+  it("starts Podman Machine outside Linux", async () => {
+    enqueue(1, 0, 0);
+
+    const result = await withPlatform(Platform.Windows, () =>
+      ensureRuntimeReady(executor, "podman", vi.fn()),
+    );
+
+    expect(result).toBe(true);
+    expect(calls).toEqual([
+      { bin: "podman", args: ["info"] },
+      { bin: "podman", args: ["machine", "start"] },
+      { bin: "podman", args: ["info"] },
+    ]);
+  });
+
+  it("does not try to start daemonless Podman on Linux", async () => {
+    enqueue(1);
+
+    const onStart = vi.fn();
+    const result = await withPlatform(Platform.Linux, () =>
+      ensureRuntimeReady(executor, "podman", onStart),
+    );
+
+    expect(result).toBe(false);
+    expect(calls).toEqual([{ bin: "podman", args: ["info"] }]);
+    expect(onStart).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@ import { buildImage } from "./docker";
 import { ContainerClient } from "./container-client";
 import {
   Executor,
+  ensureRuntimeReady,
   getDefaultRuntime,
   getRuntimeAvailability,
 } from "./platform/shell";
@@ -142,14 +143,22 @@ export async function expressSetup(
   stateStore.save(finalState);
 
   if (runtime) {
-    const rt = new ContainerClient(executor, runtime);
-    clack.log.info(`Building container image (target: full)`);
-    const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
-    if (!buildResult.ok) {
-      clack.log.error("Failed to build image");
-      clack.log.warn("Run 'container build' manually to retry.");
+    if (
+      !(await ensureRuntimeReady(executor, runtime, () => {
+        clack.log.info(`Starting ${runtime}...`);
+      }))
+    ) {
+      clack.log.error(`Unable to start ${runtime}. Image not built.`);
     } else {
-      clack.log.success("Image built successfully");
+      const rt = new ContainerClient(executor, runtime);
+      clack.log.info(`Building container image (target: full)`);
+      const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
+      if (!buildResult.ok) {
+        clack.log.error("Failed to build image");
+        clack.log.warn("Run 'container build' manually to retry.");
+      } else {
+        clack.log.success("Image built successfully");
+      }
     }
   }
 
@@ -198,14 +207,28 @@ async function customSetup(
       message: "Build the container image now? (Recommended)",
     });
     if (!clack.isCancel(shouldBuild) && shouldBuild) {
-      const rt = new ContainerClient(executor, runtime);
-      clack.log.info(`Building container image (target: full)`);
-      const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
-      if (!buildResult.ok) {
-        clack.log.error("Failed to build image");
-        clack.log.warn("Run 'container build' manually to retry.");
+      if (
+        !(await ensureRuntimeReady(executor, runtime, () => {
+          clack.log.info(`Starting ${runtime}...`);
+        }))
+      ) {
+        clack.log.error(`Unable to start ${runtime}. Image not built.`);
       } else {
-        clack.log.success("Image built successfully");
+        const rt = new ContainerClient(executor, runtime);
+        clack.log.info(`Building container image (target: full)`);
+        const buildResult = buildImage(
+          rt,
+          settingsStore,
+          stateStore,
+          fs,
+          "full",
+        );
+        if (!buildResult.ok) {
+          clack.log.error("Failed to build image");
+          clack.log.warn("Run 'container build' manually to retry.");
+        } else {
+          clack.log.success("Image built successfully");
+        }
       }
     }
   }

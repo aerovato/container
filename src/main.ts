@@ -7,7 +7,12 @@ import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
 import { ContainerClient } from "./container-client";
-import { Executor, createExecutor, getDefaultRuntime } from "./platform/shell";
+import {
+  Executor,
+  createExecutor,
+  ensureRuntimeReady,
+  getDefaultRuntime,
+} from "./platform/shell";
 import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
 import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
@@ -116,14 +121,18 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const runtime = new ContainerClient(executor, settings.runtime);
-
-  if (!runtime.daemonRunning()) {
+  if (
+    !(await ensureRuntimeReady(executor, settings.runtime, () => {
+      clack.log.info(`Starting ${settings.runtime}...`);
+    }))
+  ) {
     clack.log.error(
-      `${settings.runtime} daemon is not running. Start ${settings.runtime} and try again.`,
+      `Unable to start ${settings.runtime}. Start it manually and try again.`,
     );
     process.exit(1);
   }
+
+  const runtime = new ContainerClient(executor, settings.runtime);
 
   stopOrphanedContainers(runtime);
 
