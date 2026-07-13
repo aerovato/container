@@ -103,6 +103,12 @@ async function main(): Promise<void> {
 
   settings = setDefaultSettings(executor, settings, settingsStore);
 
+  switch (parsed.command) {
+    case "settings":
+      await settingsCommand(executor, settingsStore, stateStore, fsReader);
+      return;
+  }
+
   if (!settings.runtime) {
     clack.log.error(
       "No container runtime found. Install Docker or Podman to continue.",
@@ -124,9 +130,6 @@ async function main(): Promise<void> {
   switch (parsed.command) {
     case "list":
       listCommand(runtime);
-      return;
-    case "settings":
-      await settingsCommand(runtime, settingsStore, stateStore, fsReader);
       return;
     case "build":
       buildCommand(runtime, settingsStore, stateStore, fsReader, parsed.target);
