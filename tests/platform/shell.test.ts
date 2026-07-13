@@ -159,7 +159,7 @@ describe("ensureRuntimeReady", () => {
     vi.useRealTimers();
   });
 
-  it("falls back to the rootless Docker service on Linux", async () => {
+  it("starts the rootless Docker service on Linux", async () => {
     enqueue(1, 0, 0);
 
     const result = await withPlatform(Platform.Linux, () =>
@@ -174,7 +174,7 @@ describe("ensureRuntimeReady", () => {
     ]);
   });
 
-  it("starts the system Docker service on Linux", async () => {
+  it("starts Docker Desktop on Linux", async () => {
     enqueue(1, 1, 0, 0);
 
     const result = await withPlatform(Platform.Linux, () =>
@@ -185,6 +185,29 @@ describe("ensureRuntimeReady", () => {
     expect(calls).toEqual([
       { bin: "docker", args: ["info"] },
       { bin: "systemctl", args: ["--user", "start", "docker"] },
+      {
+        bin: "systemctl",
+        args: ["--user", "start", "docker-desktop"],
+      },
+      { bin: "docker", args: ["info"] },
+    ]);
+  });
+
+  it("starts the system Docker service on Linux", async () => {
+    enqueue(1, 1, 1, 0, 0);
+
+    const result = await withPlatform(Platform.Linux, () =>
+      ensureRuntimeReady(executor, "docker", vi.fn()),
+    );
+
+    expect(result).toBe(true);
+    expect(calls).toEqual([
+      { bin: "docker", args: ["info"] },
+      { bin: "systemctl", args: ["--user", "start", "docker"] },
+      {
+        bin: "systemctl",
+        args: ["--user", "start", "docker-desktop"],
+      },
       { bin: "sudo", args: ["systemctl", "start", "docker"] },
       { bin: "docker", args: ["info"] },
     ]);

@@ -61,6 +61,13 @@ function startDocker(executor: Executor): boolean {
     ).status;
     if (userServiceStatus === 0) return true;
 
+    const desktopServiceStatus = executor.spawnSync(
+      "systemctl",
+      ["--user", "start", "docker-desktop"],
+      { stdio: "pipe" },
+    ).status;
+    if (desktopServiceStatus === 0) return true;
+
     return (
       executor.spawnSync("sudo", ["systemctl", "start", "docker"], {
         stdio: "inherit",
