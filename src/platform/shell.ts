@@ -52,34 +52,56 @@ function waitForRuntime(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, RUNTIME_READY_DELAY_MS));
 }
 
-function startDocker(executor: Executor): boolean {
-  if (isLinux()) {
-    const userServiceStatus = executor.spawnSync(
-      "systemctl",
-      ["--user", "start", "docker"],
-      { stdio: "pipe" },
-    ).status;
-    if (userServiceStatus === 0) return true;
-
-    const desktopServiceStatus = executor.spawnSync(
-      "systemctl",
-      ["--user", "start", "docker-desktop"],
-      { stdio: "pipe" },
-    ).status;
-    if (desktopServiceStatus === 0) return true;
-
-    return (
-      executor.spawnSync("sudo", ["systemctl", "start", "docker"], {
-        stdio: "inherit",
-      }).status === 0
-    );
+async function waitForRuntimeReady(
+  executor: Executor,
+  runtime: RuntimeBin,
+): Promise<boolean> {
+  for (let attempt = 0; attempt < RUNTIME_READY_ATTEMPTS; attempt++) {
+    if (runtimeReady(executor, runtime)) return true;
+    if (attempt < RUNTIME_READY_ATTEMPTS - 1) await waitForRuntime();
   }
 
-  return (
-    executor.spawnSync("docker", ["desktop", "start", "--detach"], {
-      stdio: "pipe",
-    }).status === 0
-  );
+  return false;
+}
+
+async function startDocker(executor: Executor): Promise<boolean> {
+  if (!isLinux()) {
+    const status = executor.spawnSync(
+      "docker",
+      ["desktop", "start", "--detach"],
+      { stdio: "pipe" },
+    ).status;
+    return status === 0 && waitForRuntimeReady(executor, "docker");
+  }
+
+  const contextResult = executor.spawnSync("docker", ["context", "show"], {
+    stdio: "pipe",
+  });
+  const context = contextResult.stdout.toString().trim();
+  const services =
+    context === "desktop-linux"
+      ? ["docker-desktop", "docker", "system"]
+      : context === "rootless"
+        ? ["docker", "docker-desktop", "system"]
+        : context === "default"
+          ? ["system", "docker-desktop", "docker"]
+          : [];
+
+  for (const service of services) {
+    const status =
+      service === "system"
+        ? executor.spawnSync("sudo", ["systemctl", "start", "docker"], {
+            stdio: "inherit",
+          }).status
+        : executor.spawnSync("systemctl", ["--user", "start", service], {
+            stdio: "pipe",
+          }).status;
+    if (status === 0 && (await waitForRuntimeReady(executor, "docker"))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function startPodman(executor: Executor): boolean {
@@ -100,14 +122,9 @@ export async function ensureRuntimeReady(
 
   onStart();
 
-  const started =
-    runtime === "docker" ? startDocker(executor) : startPodman(executor);
+  if (runtime === "docker") return startDocker(executor);
+
+  const started = startPodman(executor);
   if (!started) return false;
-
-  for (let attempt = 0; attempt < RUNTIME_READY_ATTEMPTS; attempt++) {
-    if (runtimeReady(executor, runtime)) return true;
-    if (attempt < RUNTIME_READY_ATTEMPTS - 1) await waitForRuntime();
-  }
-
-  return false;
+  return waitForRuntimeReady(executor, runtime);
 }
