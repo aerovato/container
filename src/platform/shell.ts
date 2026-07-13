@@ -41,7 +41,7 @@ export function getDefaultRuntime(executor: Executor): RuntimeBin | undefined {
   return isLinux() ? "podman" : "docker";
 }
 
-const RUNTIME_READY_ATTEMPTS = 15;
+const RUNTIME_READY_ATTEMPTS = 30;
 const RUNTIME_READY_DELAY_MS = 1000;
 
 function runtimeReady(executor: Executor, runtime: RuntimeBin): boolean {
@@ -76,7 +76,7 @@ function startDocker(executor: Executor): boolean {
   }
 
   return (
-    executor.spawnSync("docker", ["desktop", "start"], {
+    executor.spawnSync("docker", ["desktop", "start", "--detach"], {
       stdio: "pipe",
     }).status === 0
   );

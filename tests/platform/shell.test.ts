@@ -152,7 +152,7 @@ describe("ensureRuntimeReady", () => {
     await expect(result).resolves.toBe(true);
     expect(calls).toEqual([
       { bin: "docker", args: ["info"] },
-      { bin: "docker", args: ["desktop", "start"] },
+      { bin: "docker", args: ["desktop", "start", "--detach"] },
       { bin: "docker", args: ["info"] },
       { bin: "docker", args: ["info"] },
     ]);
