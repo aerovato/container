@@ -175,11 +175,11 @@ describe("detectTools", () => {
       "python",
       "bun",
       "enhanced-tools",
+      "agents-directory",
       "npm-config",
       "git-config",
       "vim-config",
       "deno",
-      "agents-directory",
     ]);
   });
 });
@@ -372,5 +372,54 @@ describe("expressSetup", () => {
     );
 
     expect(result.settings.enabledHarnesses).toEqual(["opencode", "claude"]);
+  });
+
+  it("starts the runtime before building", async () => {
+    const calls: Array<{ bin: string; args: string[] }> = [];
+    let infoCalls = 0;
+    const executor: Executor = {
+      spawnSync: (bin: string, args: string[]) => {
+        calls.push({ bin, args });
+        if (args[0] === "--version") {
+          return { status: bin === "docker" ? 0 : 1, stdout: "", stderr: "" };
+        }
+        if (bin === "docker" && args[0] === "info") {
+          infoCalls++;
+          return {
+            status: infoCalls === 1 ? 1 : 0,
+            stdout: "",
+            stderr: "",
+          };
+        }
+        if (bin === "docker" && args[0] === "desktop") {
+          return { status: 0, stdout: "", stderr: "" };
+        }
+        if (bin === "docker" && args[0] === "build") {
+          return { status: 0, stdout: "", stderr: "" };
+        }
+        return { status: 1, stdout: "", stderr: "" };
+      },
+    };
+    const { settingsStore, stateStore } = makeStores();
+
+    await withPlatform(Platform.Macos, () =>
+      expressSetup(
+        fsReader,
+        executor,
+        {} as Settings,
+        settingsStore,
+        stateStore,
+      ),
+    );
+
+    const startIndex = calls.findIndex(
+      call => call.bin === "docker" && call.args[0] === "desktop",
+    );
+    const buildIndex = calls.findIndex(
+      call => call.bin === "docker" && call.args[0] === "build",
+    );
+    expect(startIndex).toBeGreaterThan(-1);
+    expect(buildIndex).toBeGreaterThan(startIndex);
+    expect(clack.log.info).toHaveBeenCalledWith("Starting docker...");
   });
 });

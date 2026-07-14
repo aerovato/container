@@ -7,7 +7,12 @@ import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
 import { ContainerClient } from "./container-client";
-import { Executor, createExecutor, getDefaultRuntime } from "./platform/shell";
+import {
+  Executor,
+  createExecutor,
+  ensureRuntimeReady,
+  getDefaultRuntime,
+} from "./platform/shell";
 import { Settings } from "./types";
 import { ensureTosAccepted } from "./tos";
 import { needsOnboarding, runOnboarding, OnboardingReason } from "./onboarding";
@@ -103,6 +108,12 @@ async function main(): Promise<void> {
 
   settings = setDefaultSettings(executor, settings, settingsStore);
 
+  switch (parsed.command) {
+    case "settings":
+      await settingsCommand(executor, settingsStore, stateStore, fsReader);
+      return;
+  }
+
   if (!settings.runtime) {
     clack.log.error(
       "No container runtime found. Install Docker or Podman to continue.",
@@ -110,23 +121,24 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const runtime = new ContainerClient(executor, settings.runtime);
-
-  if (!runtime.daemonRunning()) {
+  if (
+    !(await ensureRuntimeReady(executor, settings.runtime, () => {
+      clack.log.info(`Starting ${settings.runtime}...`);
+    }))
+  ) {
     clack.log.error(
-      `${settings.runtime} daemon is not running. Start ${settings.runtime} and try again.`,
+      `Unable to start ${settings.runtime}. Start it manually and try again.`,
     );
     process.exit(1);
   }
+
+  const runtime = new ContainerClient(executor, settings.runtime);
 
   stopOrphanedContainers(runtime);
 
   switch (parsed.command) {
     case "list":
       listCommand(runtime);
-      return;
-    case "settings":
-      await settingsCommand(runtime, settingsStore, stateStore, fsReader);
       return;
     case "build":
       buildCommand(runtime, settingsStore, stateStore, fsReader, parsed.target);

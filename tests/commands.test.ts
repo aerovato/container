@@ -580,13 +580,13 @@ describe("settingsCommand", () => {
 
   it("exits immediately when done is selected without changes", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select).mockResolvedValueOnce("done");
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     expect(clack.outro).toHaveBeenCalledWith("Settings saved");
+    expect(calls).toHaveLength(0);
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
     if (!saved.ok) return;
@@ -595,7 +595,6 @@ describe("settingsCommand", () => {
 
   it("updates enabledHarnesses and skips rebuild", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("harnesses")
@@ -603,7 +602,7 @@ describe("settingsCommand", () => {
       .mockResolvedValueOnce("skip");
     vi.mocked(clack.multiselect).mockResolvedValueOnce(["opencode", "gemini"]);
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
@@ -613,7 +612,6 @@ describe("settingsCommand", () => {
 
   it("triggers harness rebuild when selected", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     enqueue({ status: 0 });
     enqueue({ status: 0 });
@@ -624,7 +622,7 @@ describe("settingsCommand", () => {
       .mockResolvedValueOnce("harness");
     vi.mocked(clack.multiselect).mockResolvedValueOnce(["opencode", "claude"]);
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const buildCalls = calls.filter(c => c.args[0] === "build");
     expect(buildCalls.length).toBeGreaterThanOrEqual(1);
@@ -632,14 +630,13 @@ describe("settingsCommand", () => {
 
   it("updates runtime", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("runtime")
       .mockResolvedValueOnce("podman")
       .mockResolvedValueOnce("done");
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
@@ -649,14 +646,13 @@ describe("settingsCommand", () => {
 
   it("updates system mounts", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("mounts")
       .mockResolvedValueOnce("done");
     vi.mocked(clack.confirm).mockResolvedValueOnce(true);
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);
@@ -666,26 +662,24 @@ describe("settingsCommand", () => {
 
   it("handles cancel on main menu", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select).mockResolvedValueOnce(Symbol("cancel"));
     vi.mocked(clack.isCancel).mockReturnValueOnce(true);
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     expect(clack.outro).toHaveBeenCalledWith("Settings saved");
   });
 
   it("does not offer rebuild when harnesses unchanged", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("runtime")
       .mockResolvedValueOnce("docker")
       .mockResolvedValueOnce("done");
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const selectCalls = vi.mocked(clack.select).mock.calls;
     const rebuildCall = selectCalls.find(
@@ -696,7 +690,6 @@ describe("settingsCommand", () => {
 
   it("updates enabledTools and saves buildDirty: tools when skipped", async () => {
     const { settingsStore, stateStore } = setupStores();
-    const runtime = new ContainerClient(mockExecutor, "docker");
 
     vi.mocked(clack.select)
       .mockResolvedValueOnce("tools")
@@ -704,7 +697,7 @@ describe("settingsCommand", () => {
       .mockResolvedValueOnce("skip");
     vi.mocked(clack.multiselect).mockResolvedValueOnce(["bun", "deno"]);
 
-    await settingsCommand(runtime, settingsStore, stateStore, fsReader);
+    await settingsCommand(mockExecutor, settingsStore, stateStore, fsReader);
 
     const saved = settingsStore.load();
     expect(saved.ok).toBe(true);

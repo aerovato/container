@@ -2,6 +2,7 @@ import * as clack from "@clack/prompts";
 import { ContainerClient } from "../container-client";
 import { SettingsStore, StateStore } from "../config";
 import { Filesystem } from "../platform/fs";
+import { Executor } from "../platform/shell";
 import { RuntimeBin } from "../types";
 import { HARNESS_PACKS } from "../harness-packs";
 import { TOOL_PACKS } from "../tool-packs";
@@ -16,7 +17,7 @@ function formatList(items: string[]): string {
 }
 
 export async function settingsCommand(
-  runtime: ContainerClient,
+  executor: Executor,
   settingsStore: SettingsStore,
   stateStore: StateStore,
   fs: Filesystem,
@@ -160,6 +161,7 @@ export async function settingsCommand(
     || currentTools.some((v, i) => v !== initialToolsSorted[i]);
 
   if (harnessesChanged || toolsChanged) {
+    const dirtyTarget = toolsChanged ? "tools" : "harness";
     const rebuildChoice = await clack.select({
       message: "Configuration changed. Rebuild the image now?",
       options: [
@@ -171,11 +173,16 @@ export async function settingsCommand(
     });
 
     if (clack.isCancel(rebuildChoice) || rebuildChoice === "skip") {
-      const dirtyTarget = toolsChanged ? "tools" : "harness";
+      const stateResult = stateStore.load();
+      const state = stateResult.ok ? stateResult.value : {};
+      stateStore.save({ ...state, buildDirty: dirtyTarget });
+    } else if (!settings.runtime) {
+      clack.log.error("No container runtime configured. Image not rebuilt.");
       const stateResult = stateStore.load();
       const state = stateResult.ok ? stateResult.value : {};
       stateStore.save({ ...state, buildDirty: dirtyTarget });
     } else {
+      const runtime = new ContainerClient(executor, settings.runtime);
       const target = rebuildChoice as BuildTarget;
       clack.log.info(`Building container image (target: ${target})`);
       const buildResult = buildImage(
