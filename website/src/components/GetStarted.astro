@@ -1,0 +1,271 @@
+---
+const containerPillClass =
+  "inline-flex items-center rounded-md bg-surface-secondary px-2 py-1 align-baseline font-mono leading-none text-content-primary";
+
+const platforms = [
+  {
+    id: "windows",
+    label: "Windows",
+    shell: "PowerShell",
+    steps: [
+      {
+        title: "Install container",
+        description: "Install the standalone Container CLI with PowerShell.",
+        command: "irm https://container.aerovato.com/install.ps1 | iex",
+      },
+      {
+        title: "Install Docker Desktop",
+        description:
+          "Install and launch Docker Desktop. Finish its initial setup before continuing.",
+        command:
+          'winget install --exact --id Docker.DockerDesktop\nStart-Process "$Env:ProgramFiles\\Docker\\Docker\\Docker Desktop.exe"',
+      },
+      {
+        title: "Configure Container",
+        description:
+          "Complete guided onboarding, choose your tools, and accept the initial image build.",
+        command: "container init",
+      },
+      {
+        title: "Start a workspace",
+        description:
+          "Open your project directory and start an isolated coding workspace.",
+        command: "cd C:\\path\\to\\project\ncontainer",
+      },
+    ],
+  },
+  {
+    id: "macos",
+    label: "macOS",
+    shell: "Terminal",
+    steps: [
+      {
+        title: "Install container",
+        description:
+          "Install the standalone Container CLI and add it to the current shell path.",
+        command:
+          'curl -fsSL https://container.aerovato.com/install.sh | sh\nexport PATH="$HOME/.code-container/bin:$PATH"',
+      },
+      {
+        title: "Install Docker Desktop",
+        description:
+          "Install and launch Docker Desktop. Finish its initial setup before continuing.",
+        command: "brew install --cask docker\nopen -a Docker",
+      },
+      {
+        title: "Configure Container",
+        description:
+          "Complete guided onboarding, choose your tools, and accept the initial image build.",
+        command: "container init",
+      },
+      {
+        title: "Start a workspace",
+        description:
+          "Open your project directory and start an isolated coding workspace.",
+        command: "cd /path/to/project\ncontainer",
+      },
+    ],
+  },
+  {
+    id: "linux",
+    label: "Linux",
+    shell: "Terminal",
+    steps: [
+      {
+        title: "Install container",
+        description:
+          "Install the standalone Container CLI and add it to the current shell path.",
+        command:
+          'curl -fsSL https://container.aerovato.com/install.sh | sh\nexport PATH="$HOME/.code-container/bin:$PATH"',
+      },
+      {
+        title: "Install Podman",
+        description:
+          "Install the recommended Linux runtime with apt on Debian or Ubuntu. Other distributions should use their system package manager.",
+        command: "sudo apt-get update\nsudo apt-get install -y podman",
+      },
+      {
+        title: "Configure Container",
+        description:
+          "Complete guided onboarding, choose your tools, and accept the initial image build.",
+        command: "container init",
+      },
+      {
+        title: "Start a workspace",
+        description:
+          "Open your project directory and start an isolated coding workspace.",
+        command: "cd /path/to/project\ncontainer",
+      },
+    ],
+  },
+] as const;
+---
+
+<section
+  id="get-started"
+  class="border-b border-border px-7 py-16 md:px-12 md:py-20"
+  data-installation
+>
+  <div class="max-w-3xl">
+    <h2
+      class="m-0 text-4xl leading-tight tracking-tight"
+    >
+      Get started with <code
+        class={containerPillClass}
+        >container</code
+      >
+    </h2>
+    <p
+      class="mb-0 mt-5 text-base leading-normal text-content-secondary sm:text-lg"
+    >
+      Install <code
+        class={containerPillClass}
+        >container</code
+      >, choose your project, and start an AI coding session in minutes.
+    </p>
+  </div>
+
+  <div
+    class="mt-12 flex gap-8 border-b border-border"
+    role="tablist"
+    aria-label="Installation platform"
+  >
+    {
+      platforms.map((platform, index) => (
+        <button
+          id={`install-tab-${platform.id}`}
+          class="group/tab relative -mb-px shrink-0 cursor-pointer pb-3 font-sans text-base font-medium text-content-tertiary transition-colors duration-200 hover:text-content-primary aria-selected:text-content-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-content-primary"
+          type="button"
+          role="tab"
+          aria-selected={index === 0 ? "true" : "false"}
+          aria-controls={`install-panel-${platform.id}`}
+          tabindex={index === 0 ? 0 : -1}
+          data-install-tab
+        >
+          {platform.label}
+          <span
+            class="pointer-events-none absolute inset-x-0 -bottom-px h-px origin-center scale-x-0 bg-content-primary transition-transform duration-200 group-hover/tab:scale-x-100 group-aria-selected/tab:scale-x-100"
+            aria-hidden="true"
+          />
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    platforms.map((platform, platformIndex) => (
+      <div
+        id={`install-panel-${platform.id}`}
+        role="tabpanel"
+        aria-labelledby={`install-tab-${platform.id}`}
+        tabindex="0"
+        hidden={platformIndex !== 0}
+        data-install-panel
+      >
+        <ol class="m-0 mt-12 list-none p-0">
+          {platform.steps.map((step, stepIndex) => (
+            <li class="grid grid-cols-1 gap-6 border-t border-border py-10 first:border-t-0 first:pt-0 last:pb-0 md:grid-cols-2 md:gap-12">
+              <div class="flex items-start gap-4">
+                <span class="shrink-0 rounded-lg border border-border bg-surface-secondary px-2.5 py-1.5 font-mono text-xs text-content-secondary">
+                  {String(stepIndex + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <h3 class="m-0 text-lg font-semibold leading-snug">
+                    {stepIndex === 0 ? (
+                      <>Install <code class={containerPillClass}>container</code></>
+                    ) : step.title}
+                  </h3>
+                  <p class="mb-0 mt-3 text-base leading-normal text-content-secondary">
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                class="self-start overflow-hidden rounded-xl border border-border bg-surface-secondary transition-colors duration-150 has-[.copy-command:hover]:border-content-tertiary has-[.copy-command:hover]:bg-surface-primary has-[.copy-command:focus-visible]:border-content-tertiary has-[.copy-command:focus-visible]:bg-surface-primary"
+                data-command-card
+              >
+                <div class="flex min-h-11 items-center justify-between border-b border-border px-4 text-sm text-content-tertiary">
+                  <span>{platform.shell}</span>
+                  <button
+                    class="copy-command group grid size-7 cursor-pointer place-items-center rounded-md text-content-tertiary hover:bg-surface-secondary focus-visible:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-content-primary"
+                    type="button"
+                    title="Copy command"
+                    aria-label="Copy command"
+                    data-copy-command
+                  >
+                    <span class="relative block size-4 group-data-[copied=true]:hidden" aria-hidden="true">
+                      <span class="absolute left-1 top-0 size-2.5 rounded-sm border border-content-tertiary" />
+                      <span class="absolute left-0 top-1 size-2.5 rounded-sm border border-content-tertiary bg-surface-secondary" />
+                    </span>
+                    <span class="hidden font-mono text-xs group-data-[copied=true]:block" aria-hidden="true">
+                      OK
+                    </span>
+                  </button>
+                </div>
+                <pre class="m-0 overflow-x-auto p-5 font-mono text-sm leading-6 text-content-primary"><code>{step.command}</code></pre>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    ))
+  }
+</section>
+
+<script>
+  document
+    .querySelectorAll<HTMLElement>("[data-installation]")
+    .forEach(root => {
+      const tabs = Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-install-tab]"),
+      );
+      const panels = Array.from(
+        root.querySelectorAll<HTMLElement>("[data-install-panel]"),
+      );
+
+      const selectTab = (selectedTab: HTMLButtonElement): void => {
+        tabs.forEach(tab => {
+          const selected = tab === selectedTab;
+          tab.setAttribute("aria-selected", String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.id !== selectedTab.getAttribute("aria-controls");
+        });
+      };
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener("click", () => selectTab(tab));
+        tab.addEventListener("keydown", event => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          const offset = event.key === "ArrowRight" ? 1 : -1;
+          const nextTab = tabs[(index + offset + tabs.length) % tabs.length];
+          selectTab(nextTab);
+          nextTab.focus();
+        });
+      });
+
+      root
+        .querySelectorAll<HTMLButtonElement>("[data-copy-command]")
+        .forEach(button => {
+          button.addEventListener("click", async () => {
+            const command = button
+              .closest<HTMLElement>("[data-command-card]")
+              ?.querySelector("code")?.textContent;
+            if (!command) return;
+
+            await navigator.clipboard.writeText(command);
+            button.dataset.copied = "true";
+            button.title = "Copied";
+            button.setAttribute("aria-label", "Command copied");
+            window.setTimeout(() => {
+              delete button.dataset.copied;
+              button.title = "Copy command";
+              button.setAttribute("aria-label", "Copy command");
+            }, 1500);
+          });
+        });
+    });
+</script>

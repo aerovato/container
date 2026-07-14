@@ -1,0 +1,444 @@
+---
+import "../styles/global.css";
+import GetStarted from "../components/GetStarted.astro";
+
+const containerPillClass =
+  "inline-flex items-center rounded-md bg-surface-secondary px-2 py-1 align-baseline font-mono leading-none text-content-primary";
+const commandClass =
+  "absolute z-10 -translate-y-4 cursor-pointer whitespace-nowrap rounded-md border border-border bg-surface-primary px-2.5 py-1.5 font-mono text-sm text-content-primary shadow-sm shadow-border transition duration-150 ease-out hover:-translate-y-5 hover:shadow-md active:-translate-y-4 active:shadow-none md:max-xl:text-xs";
+const decorativeCommandClass =
+  "hero-background-command pointer-events-none absolute -translate-y-4 whitespace-nowrap rounded-md border border-border bg-surface-primary px-2.5 py-1.5 font-mono text-sm text-content-primary shadow-sm shadow-border select-none md:max-xl:text-xs";
+const agentCardClass =
+  "group/card grid size-full cursor-pointer place-items-center rounded-md border border-border bg-surface-primary shadow-lg shadow-border transition duration-200 ease-out hover:-translate-y-1 hover:shadow-xl";
+const agentSlotClass =
+  "relative -ml-1 size-16 hover:z-20 sm:size-20 md:max-xl:size-16";
+const agentLogoClass =
+  "size-10 transition-opacity duration-200 group-hover/agents:opacity-50 group-hover/card:opacity-100 sm:size-12.5 md:max-xl:size-10";
+const sectionHeadingClass =
+  "flex min-h-56 flex-col items-start justify-center border-b border-border px-6 py-12 text-left sm:items-center sm:text-center md:min-h-60";
+const featureCardClass =
+  "min-h-40 px-7 py-10 md:p-12";
+const primaryButtonClass =
+  "group inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-content-primary px-4 py-2 font-sans text-sm font-semibold text-surface-primary transition-opacity duration-150 hover:opacity-90 active:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-content-primary";
+
+const safetyFeatures = [
+  {
+    title: "Lift-off with one command",
+    description: "Start an AI coding session from any project in seconds.",
+  },
+  {
+    title: "Project-level isolation",
+    description:
+      "Each project gets its own contained workspace, keeping agent activity scoped and separate.",
+  },
+  {
+    title: "One-click onboarding",
+    description:
+      "Choose your harnesses, tools, and defaults through a guided setup instead of wiring everything by hand.",
+  },
+  {
+    title: "Persistent environments",
+    description:
+      "Keep your Linux workspace, installed tools, and runtime state between sessions.",
+  },
+];
+
+const workflowFeatures = [
+  {
+    title: "Agent agnostic",
+    description: "Run Claude Code, OpenCode, Codex, Pi, and more.",
+  },
+  {
+    title: "Batteries included",
+    description: "Select useful tools during setup so your agent is ready to work.",
+  },
+  {
+    title: "Customize your image",
+    description:
+      "Extend the container with your own packages, commands, and setup scripts.",
+  },
+  {
+    title: "Mount shared configs",
+    description:
+      "Share common settings across workspaces without copying files by hand.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en" class="scroll-smooth bg-surface-primary">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Container gives AI coding agents practical, persistent, and safe workspaces."
+    />
+    <title>Container by Aerovato Research</title>
+  </head>
+  <body class="m-0 min-h-screen min-w-80 bg-surface-primary font-sans text-content-primary sm:px-5">
+    <div
+      class="mx-auto min-h-screen max-w-7xl border-border sm:border-x"
+    >
+      <header
+        class="flex min-h-17 items-center justify-between gap-3 border-b border-border px-4 font-serif text-sm sm:px-7 md:gap-6 md:px-12 md:text-base"
+      >
+        <div class="flex shrink-0 select-none items-center gap-2.5">
+          <span class={containerPillClass}>container</span>
+          <span class="hidden md:inline">by <strong>Aerovato Research</strong></span>
+        </div>
+        <nav class="flex items-center gap-3" aria-label="Primary navigation">
+          <a
+            class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border px-3.5 py-2 font-sans text-sm font-medium text-content-primary transition-colors duration-150 hover:border-content-tertiary hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-content-primary"
+            href="https://github.com/aerovato/container"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span
+              class="size-4 bg-content-primary [mask-image:url('/logos/github.svg')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
+              aria-hidden="true"
+            ></span>
+            <span class="hidden sm:inline">Contribute</span>
+          </a>
+          <a class={primaryButtonClass} href="#get-started">
+            Get Started
+            <svg
+              class="size-4 transition-transform duration-150 group-hover:translate-x-1 group-active:translate-x-0"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path d="M3 8h10M9 4l4 4-4 4"></path>
+            </svg>
+          </a>
+        </nav>
+      </header>
+
+      <main>
+        <section
+          class="grid min-h-160 grid-cols-1 border-b border-border md:grid-cols-2"
+        >
+          <div
+            class="flex min-h-100 items-center px-7 py-12 md:min-h-0 md:p-12"
+          >
+            <div>
+              <h1
+                class="m-0 text-4xl leading-none tracking-tight lg:text-5xl"
+              >
+                A powerful workspace<br />for your AI agent.
+              </h1>
+              <p
+                class="mb-0 mt-6 text-base leading-snug text-content-secondary sm:text-lg"
+              >
+                <code class={containerPillClass}>container</code> gives your agents practical,<br
+                  class="hidden sm:block"
+                />
+                persistent, and safe workspaces for AI coding.
+              </p>
+              <a class:list={[primaryButtonClass, "mt-8"]} href="#get-started">
+                Get Started
+                <svg
+                  class="size-4 transition-transform duration-150 group-hover:translate-x-1 group-active:translate-x-0"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path d="M3 8h10M9 4l4 4-4 4"></path>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div
+            class="flex min-h-80 items-center justify-center border-t border-border px-5 py-10 sm:min-h-100 sm:px-7 sm:pb-10 sm:pt-14 md:min-h-0 md:border-l md:border-t-0 md:p-12"
+          >
+            <div
+                class="hero-window-enter relative aspect-6/5 w-full max-w-lg select-none rounded-xl border border-border"
+            >
+              <span
+                class:list={[
+                  containerPillClass,
+                  "absolute left-5 top-0 z-30 -translate-y-1/2 border border-border px-2.5 py-1.5",
+                ]}>container</span
+              >
+              <code
+                class:list={[
+                  decorativeCommandClass,
+                  "hero-background-first -mt-1 ml-2 left-6 top-2/5 opacity-40",
+                ]}
+                aria-hidden="true">npm test</code
+              >
+              <code
+                class:list={[
+                  decorativeCommandClass,
+                  "hero-background-second right-6 top-2/5 opacity-30",
+                ]}
+                aria-hidden="true">cargo build --release</code
+              >
+              <code
+                class:list={[
+                  decorativeCommandClass,
+                  "hero-background-third bottom-6 left-1/2 ml-1 -translate-x-1/2 opacity-20",
+                ]}
+                aria-hidden="true">pip install requests</code
+              >
+              <code
+                class:list={[
+                  commandClass,
+                  "hero-command-enter hero-command-first left-1/2 top-[20%] -translate-x-1/2",
+                ]}>sudo apt install texlive-full</code
+              >
+              <code
+                class:list={[
+                  commandClass,
+                  "hero-command-enter hero-command-second bottom-[19%] left-[5%] mb-2 -ml-1 sm:left-[11%]",
+                ]}>rm -rf node_modules</code
+              >
+              <code
+                class:list={[
+                  commandClass,
+                  "hero-command-enter hero-command-third bottom-[27%] right-[3%] -mb-1 sm:right-[7%]",
+                ]}>npm create vite@latest</code
+              >
+
+              <div
+                class="group/agents absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2"
+                aria-label="Supported AI coding agents"
+              >
+                <div class:list={[agentSlotClass, "hero-agent-left -rotate-6"]}>
+                  <div class={agentCardClass}>
+                    <img class={agentLogoClass} src="/logos/claude.svg" alt="Claude" />
+                  </div>
+                </div>
+                <div class:list={[agentSlotClass, "hero-agent-center z-10 -translate-y-1"]}>
+                  <div class={agentCardClass}>
+                    <img class={agentLogoClass} src="/logos/codex.svg" alt="Codex" />
+                  </div>
+                </div>
+                <div class:list={[agentSlotClass, "hero-agent-right rotate-6"]}>
+                  <div class={agentCardClass}>
+                    <img class={agentLogoClass} src="/logos/cursor.svg" alt="Cursor" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class={sectionHeadingClass}>
+          <h2
+            class="m-0 text-4xl leading-tight tracking-tight"
+          >
+            A safer foundation for AI coding
+          </h2>
+          <p class="mb-0 mt-4 text-base leading-snug">
+            Work with agents in a real Linux environment while keeping<br
+              class="hidden sm:block"
+            />
+            destructive actions scoped to the project container.
+          </p>
+        </section>
+
+        <section
+          class="grid grid-cols-1 border-b border-border sm:grid-cols-2"
+          aria-label="Safety features"
+        >
+          {safetyFeatures.map((feature, index) => (
+            <article
+              class:list={[
+                featureCardClass,
+                index > 0 && "border-t border-border",
+                index === 1 && "sm:border-t-0",
+                index % 2 === 1 && "sm:border-l",
+              ]}
+            >
+              <h3
+                class="m-0 text-xl font-medium leading-tight tracking-tight"
+              >
+                {feature.title}
+              </h3>
+              <p
+                class="mb-0 mt-3.5 max-w-md text-base leading-tight text-content-secondary"
+              >
+                {feature.description}
+              </p>
+            </article>
+          ))}
+        </section>
+
+        <section class={sectionHeadingClass}>
+          <h2
+            class="m-0 text-4xl leading-tight tracking-tight"
+          >
+            Bring your whole workflow
+          </h2>
+          <p class="mb-0 mt-4 text-base leading-snug">
+            Make your <code class={containerPillClass}>container</code> yours. Bring your own harness,<br
+              class="hidden sm:block"
+            />
+            tools, configs, distro, and more.
+          </p>
+        </section>
+
+        <section
+          class="grid grid-cols-1 border-b border-border sm:grid-cols-2"
+          aria-label="Workflow features"
+        >
+          {workflowFeatures.map((feature, index) => (
+            <article
+              class:list={[
+                featureCardClass,
+                index > 0 && "border-t border-border",
+                index === 1 && "sm:border-t-0",
+                index % 2 === 1 && "sm:border-l",
+              ]}
+            >
+              <h3
+                class="m-0 text-xl font-medium leading-tight tracking-tight"
+              >
+                {feature.title}
+              </h3>
+              <p
+                class="mb-0 mt-3.5 max-w-md text-base leading-tight text-content-secondary"
+              >
+                {feature.description}
+              </p>
+            </article>
+          ))}
+        </section>
+
+        <GetStarted />
+      </main>
+
+      <footer
+        class="flex min-h-20 items-center px-7 font-serif text-lg md:px-16"
+      >
+        &copy; 2026 Aerovato Research
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style>
+  .hero-window-enter {
+    animation: hero-window-enter 500ms ease-out both;
+  }
+
+  .hero-command-enter {
+    animation: hero-command-enter 300ms ease-out both;
+  }
+
+  .hero-command-first {
+    animation-delay: 850ms;
+  }
+
+  .hero-command-second {
+    animation-delay: 1s;
+  }
+
+  .hero-command-third {
+    animation-delay: 1.15s;
+  }
+
+  .hero-agent-left {
+    animation: hero-agent-left-enter 450ms ease-out 250ms both;
+  }
+
+  .hero-agent-center {
+    animation: hero-agent-center-enter 450ms ease-out 300ms both;
+  }
+
+  .hero-agent-right {
+    animation: hero-agent-right-enter 450ms ease-out 350ms both;
+  }
+
+  .hero-background-command {
+    animation: hero-background-command-enter 300ms ease-out both;
+  }
+
+  .hero-background-first {
+    animation-delay: 1.5s;
+  }
+
+  .hero-background-second {
+    animation-delay: 1.65s;
+  }
+
+  .hero-background-third {
+    animation-delay: 1.8s;
+  }
+
+  @keyframes hero-window-enter {
+    from {
+      opacity: 0;
+      scale: 0.98;
+    }
+  }
+
+  @keyframes hero-command-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes hero-background-command-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes hero-agent-left-enter {
+    from {
+      opacity: 0;
+      transform: translateX(60px) rotate(0);
+    }
+    to {
+      transform: rotate(-6deg);
+    }
+  }
+
+  @keyframes hero-agent-center-enter {
+    from {
+      opacity: 0;
+      scale: 0.9;
+      transform: rotate(0);
+    }
+    to {
+      scale: 1;
+      transform: rotate(0);
+    }
+  }
+
+  @keyframes hero-agent-right-enter {
+    from {
+      opacity: 0;
+      transform: translateX(-60px) rotate(0);
+    }
+    to {
+      transform: rotate(6deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-window-enter,
+    .hero-command-enter,
+    .hero-background-command,
+    .hero-agent-left,
+    .hero-agent-center,
+    .hero-agent-right {
+      animation: none;
+    }
+  }
+</style>
