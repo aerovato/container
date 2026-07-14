@@ -6,7 +6,13 @@ const PLATFORM_ONLY =
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "node_modules/", "__mocks__/", "scripts/*.js"],
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "__mocks__/",
+      "scripts/*.js",
+      "website/.astro/",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

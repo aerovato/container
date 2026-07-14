@@ -1,4 +1,7 @@
 node_modules
 dist
+.astro
 internal
 release-notes.md
+
+.DS_Store

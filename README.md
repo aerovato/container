@@ -1,176 +1,120 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/aerovato/container/main/.github/README/banner.jpg" alt="Banner" />
+  <img src="https://raw.githubusercontent.com/aerovato/container/main/.github/README/banner.jpg" alt="Container by Aerovato Research" />
 </p>
 
-#### `container`: Isolated Docker environments for your autonomous coding harnesses.
+# `container`
 
-#### Simple. Lightweight. Secure.
+Persistent, isolated workspaces for AI coding agents.
+
+`container` gives each project its own Docker or Podman environment. Agents can install dependencies, configure tools, and modify their environment without polluting your base system or interfering with other projects.
+
+Isolation also makes hands-off agent workflows more practical by limiting destructive operations to the project workspace and explicitly mounted resources.
+
+[Website](https://container.aerovato.com) · [Documentation](docs/ConsumerGuide.md)
 
 ## Quickstart
 
-### Prerequisites
+### Requirements
 
-- **A Windows, Mac, or Linux machine** (Both Windows native and WSL are now supported!)
-- **Docker or Podman** — Docker Desktop/Engine or Podman
+- Windows, macOS, or Linux
+- Docker or Podman
 
-### Installation
+### Install
 
-**macOS / Linux:**
+macOS and Linux:
 
 ```bash
 curl -fsSL https://container.aerovato.com/install.sh | sh
 ```
 
-**Windows:**
+Windows PowerShell:
 
 ```powershell
 irm https://container.aerovato.com/install.ps1 | iex
 ```
 
-**Alternative via npm** (requires Node.js):
+Alternatively, install through npm:
 
 ```bash
-npm uninstall -g code-container      # Uninstall V2 if present
-npm install -g @aerovato/container   # Install container V3
+npm install -g @aerovato/container
 ```
 
-### First Run
+### Configure
 
-Run `container init` (interactive onboarding). It will:
-
-- Detect installed harnesses (Claude Code, OpenCode, etc.)
-- Detect installed dev tools and let you choose which to enable
-- Migrate your existing configs
-- Let you choose Docker or Podman
-- Configure SSH and git mounts
-
-Accept the prompt to build the image (first build can take 5+ minutes).
-
-You're done. `container` is ready to use.
-
-### Shameless Self-Promotion
-
-Try [Nitro, a simple and efficient Bash harness.](https://github.com/aerovato/nitro) 11x cheaper, 75x more efficient than Claude Code for simple Bash tasks.
+Run the guided onboarding flow:
 
 ```bash
-npm install -g @aerovato/nitro
+container init
 ```
 
-## Usage
+Choose your coding harnesses, development tools, runtime, and mounts, then accept the initial image build.
 
-Navigate to any project and run `container`:
+### Run
+
+Navigate to a project and start its workspace:
 
 ```bash
-cd /path/to/your/project
+cd /path/to/project
 container
 ```
 
-Inside the container: Start your harness and develop like normal.
+Your project is mounted at `/root/<project-name>`. The container and anything installed inside it persist between sessions.
+
+Start your preferred coding agent and work normally:
 
 ```bash
-opencode                     # Start OpenCode
-npm install <package>        # Persists per container
-# ...
+opencode
+npm install <package>
 ```
 
-Your project is mounted at `/root/<project-name>`. Changes persist across sessions. Harness configs are shared across all containers.
-
----
-
-You may want to periodically rebuild the image to update harnesses and packages:
+## Common Commands
 
 ```bash
-container build               # Trigger full rebuild
-container build tools         # Rebuild dev tools, harnesses, and user packages
-container build harness       # Rebuild harnesses and user packages
-container build user          # Rebuild user packages
-```
-
-### Common Commands
-
-```bash
-container                           # Enter container for current directory
-container run /path/to/project      # Enter for a specific project
-container run /path -- -p 8080:80   # Pass extra runtime flags
-container list                      # List all containers
-container stop                      # Stop container
-container remove                    # Remove container
+container                           # Open the current project's workspace
+container run /path/to/project      # Open a specific project
+container run /path -- -p 8080:80   # Pass runtime flags
+container list                      # List managed containers
+container stop                      # Stop the current workspace
+container remove                    # Remove the current workspace
+container settings                  # Change common settings
 container init                      # Re-run onboarding
+```
+
+Rebuild the shared image when updating tools or customizations:
+
+```bash
+container build
+container build tools
+container build harness
+container build user
 ```
 
 ## Customization
 
-Customization is done through two places:
+Add packages and setup commands to:
 
-### 1. `~/.code-container/Dockerfile.User`
-
-Add packages and setup steps here. Example:
-
-```dockerfile
-FROM localhost/aerovato/container-v3-harness:latest
-
-RUN npm install -g bun typescript
-RUN pip install requests
-
-RUN npx opencode plugin opencode-quotes-plugin -g
+```text
+~/.code-container/Dockerfile.User
 ```
 
-After editing, run `container build user` to rebuild the image
+Then rebuild the user layer:
 
-### 2. `~/.code-container/settings.json`
+```bash
+container build user
+```
 
-Primary configuration file. See [docs/Settings.md](docs/Settings.md) for more details.
+Harnesses, tools, runtime flags, mounts, and base-image settings are configured through `~/.code-container/settings.json`.
 
-Common settings:
-
-- `enabledHarnesses` — which harnesses to install
-- `enabledTools` — which dev tools and configs to include
-- `runtime` — `"docker"` or `"podman"`
-- `dockerfileCore` — advanced control over the base image
-- `systemMounts` — gitconfig and SSH mounts
-- `dockerRunFlags` / `dockerExecFlags` — extra runtime flags
-
-Hint: Clone this repo and ask your agent to configure for you.
-
-### For V2 Users
-
-After upgrading to V3, all configurations will be archived to `~/.code-container/archive`. To migrate configurations over, ask your agent to read and perform the steps in [docs/Migration.md](docs/Migration.md).
-
-## Features
-
-- **Isolation** — Destructive actions stay inside the container
-- **Harness Packs** — Choose which coding harnesses to install
-- **Tool Packs** — Choose which dev tools and configs to include
-- **Configurable Runtime** — Docker or Podman
-- **Cross-Platform** — Linux, macOS, Windows (both native and WSL)
-- **Persistent State** — Workspaces and configs survive across sessions
-- **Simultaneous Work** — Multiple agents can safely work on the same project
+See [Settings](docs/Settings.md) for configuration details and [Permissions](docs/Permissions.md) for hands-off harness permissions.
 
 ## Security
 
-- `container` protects your host filesystem from `rm -rf`s
-- Packages and configurations inside containers stay localized
-- Isolation prevents cross-contamination across containers
+`container` limits what an agent can access, but it does not make the agent trusted.
 
-**Important limitations**:
+The current project is mounted read-write and can be changed or deleted. Enabled configurations and optional credentials may also be available inside the container. Containers retain network access, and `container` does not protect against prompt injection or agent misalignment.
 
-- `container` does not protect against prompt injection or agent misalignment
-- Network access is available inside the container
-- Harness configs will be mounted inside container
+Keep important work under version control and only mount resources the agent needs.
 
-## Uninstall
+## License
 
-**Binary install:**
-
-```bash
-rm -rf ~/.code-container
-```
-
-**npm install:**
-
-```bash
-npm uninstall -g @aerovato/container
-rm -rf ~/.code-container
-```
-
-Consider backing up the harness configurations in `~/.code-container/configs` before removing.
+[BSD 3-Clause](LICENSE.md)

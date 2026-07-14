@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sentient";
+  src: url("/fonts/Sentient-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cascadia Mono";
+  src: url("/fonts/CascadiaMono.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
+  --color-*: initial;
+  --color-surface-primary: #f7f5f2;
+  --color-surface-secondary: #efece7;
+  --color-border: #ddd8d1;
+  --color-content-primary: #2c2b29;
+  --color-content-secondary: #625e58;
+  --color-content-tertiary: #837d75;
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Sentient", serif;
+  --font-mono: "Cascadia Mono", monospace;
+}
