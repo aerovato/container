@@ -12,7 +12,7 @@ If your user asks questions like:
 Then your user is a **consumer**.
 
 - The user is seeking your assistance in helping them setup or configure this project.
-- Next step: **Read `docs/ConsumerGuide.md`** and assist the user in installing or configurating `container`.
+- Next step: **Read `skills/container/SKILL.md`** and assist the user in installing or configuring `container`.
 
 If your user is a developer, proceed like normal.
 
@@ -32,7 +32,7 @@ If your user is a developer, proceed like normal.
 ## Key Features
 
 - **Security**: Destructive operations localized to containers
-- **Customization**: Add packages and customizations via `~/.code-container/Dockerfile.User`; configure harnesses, runtime, flags, and mounts via `~/.code-container/settings.json` (see `docs/Settings.md`)
+- **Customization**: Add packages and customizations via `~/.code-container/Dockerfile.User`; configure harnesses, runtime, flags, and mounts via `~/.code-container/settings.json` (see `skills/container/references/configuration.md`)
 - **Simultaneous Work**: Multiple agents can work on same project safely
 - **Persistence**: Container state and harness configs persist
 

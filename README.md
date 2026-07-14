@@ -10,7 +10,7 @@ Persistent, isolated workspaces for AI coding agents.
 
 Isolation also makes hands-off agent workflows more practical by limiting destructive operations to the project workspace and explicitly mounted resources.
 
-[Website](https://container.aerovato.com) · [Documentation](docs/ConsumerGuide.md)
+[Website](https://container.aerovato.com) · [Agent Skill](skills/container/SKILL.md)
 
 ## Quickstart
 
@@ -67,6 +67,17 @@ opencode
 npm install <package>
 ```
 
+## Agent Skill
+
+Want an agent to configure Container for you? Install the portable [Container skill](skills/container/SKILL.md) on the host, then ask your agent to set up packages, harnesses, tools, mounts, permissions, or migrations.
+
+```bash
+npx skills add aerovato/container --skill container
+npx skills add aerovato/container --skill container --global  # All projects
+```
+
+The skill is host-side because agents inside managed containers cannot access Container's host configuration.
+
 ## Common Commands
 
 ```bash
@@ -105,7 +116,7 @@ container build user
 
 Harnesses, tools, runtime flags, mounts, and base-image settings are configured through `~/.code-container/settings.json`.
 
-See [Settings](docs/Settings.md) for configuration details and [Permissions](docs/Permissions.md) for hands-off harness permissions.
+See [Configuration](skills/container/references/configuration.md) for settings details and [Permissions](skills/container/references/permissions.md) for hands-off harness permissions.
 
 ## Security
 

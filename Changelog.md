@@ -74,7 +74,7 @@ Additions:
 - Native Windows support (win32 + Docker Desktop) alongside Linux, macOS, and WSL
 - Platform abstraction layer (`src/platform/`) isolating all OS-dependent logic, enforced by an ESLint rule
 - Drive-letter path canonicalization: native Windows and WSL paths for the same project resolve to one container
-- New `internal/Specs/Windows.md` and `docs/Windows.md`
+- New `internal/Specs/Windows.md` and Windows user guidance (now at `skills/container/references/windows.md`)
 - Add runtime installation instructions to onboarding
 - Modify onboarding to install a default set of harnesses if none are installed
 
@@ -88,7 +88,7 @@ FYI:
 
 - Tool and harness config paths remain POSIX-oriented; on Windows they resolve against the home directory and may need manual copying where a tool stores config elsewhere
 - UNC paths are not supported as project directories
-- See [docs/Windows.md](docs/Windows.md) for full details
+- See [Windows support](skills/container/references/windows.md) for full details
 
 ## v3.2.0
 
