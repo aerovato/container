@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.5.0
+
+Additions:
+
+- `container version` subcommand to print the installed version
+- Automatic runtime startup: `container` now starts Docker Desktop or Podman Machine when the runtime is not running, with context-aware Linux service selection (`systemctl` user/system services based on Docker context)
+
+Changes:
+
+- `container upgrade` now checks for a newer version first and reports "already up to date" instead of re-running the installer
+- `container settings` no longer requires a running runtime; image rebuild is deferred with a dirty flag when no runtime is available
+
 ## v3.4.6
 
 Changes:
