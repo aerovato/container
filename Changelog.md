@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.1
+
+Fixes:
+
+- `git-config` tool pack now mounts `~/.config/git` (XDG git config directory)
+
 ## v3.5.0
 
 Additions:

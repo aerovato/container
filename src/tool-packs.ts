@@ -111,6 +111,12 @@ export const TOOL_PACKS = {
         mount: "/root/.gitignore_global",
         kind: "file",
       },
+      {
+        host: "~/.config/git",
+        config: ".config/git",
+        mount: "/root/.config/git",
+        kind: "directory",
+      },
     ],
   },
   "vim-config": {
