@@ -580,6 +580,38 @@ describe("getMounts", () => {
     ).toBeUndefined();
   });
 
+  it("does not mount tool runtime directories", () => {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledTools: ["deno", "rust", "go", "neovim"],
+    });
+
+    expect(mounts).not.toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, ".deno")},target=/root/.deno`,
+    );
+    expect(mounts).not.toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, ".rustup")},target=/root/.rustup`,
+    );
+    expect(mounts).not.toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, "go")},target=/root/go`,
+    );
+    expect(mounts).not.toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, ".cache/nvim")},target=/root/.cache/nvim`,
+    );
+  });
+
+  it("mounts Cargo configuration and credentials without its binaries", () => {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledTools: ["rust"],
+    });
+
+    expect(mounts).toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, ".cargo/config.toml")},target=/root/.cargo/config.toml`,
+    );
+    expect(mounts).toContain(
+      `type=bind,source=${path.join(CONFIGS_DIR, ".cargo/credentials.toml")},target=/root/.cargo/credentials.toml`,
+    );
+  });
+
   it("creates missing tool directory config sources", () => {
     getMounts(fsReader, "/home/user/foo", "foo", {
       enabledTools: ["npm-config"],

@@ -22,12 +22,6 @@ export const TOOL_PACKS = {
     ],
     config: [
       {
-        host: "~/.bun",
-        config: ".bun",
-        mount: "/root/.bun",
-        kind: "directory",
-      },
-      {
         host: "~/.bunfig.toml",
         config: ".bunfig.toml",
         mount: "/root/.bunfig.toml",
@@ -147,14 +141,7 @@ export const TOOL_PACKS = {
       "RUN curl -fsSL https://deno.land/install.sh | sh",
       "RUN echo 'export PATH=\"$HOME/.deno/bin:$PATH\"' >> ~/.bashrc",
     ],
-    config: [
-      {
-        host: "~/.deno",
-        config: ".deno",
-        mount: "/root/.deno",
-        kind: "directory",
-      },
-    ],
+    config: [],
   },
   rust: {
     id: "rust",
@@ -166,16 +153,16 @@ export const TOOL_PACKS = {
     ],
     config: [
       {
-        host: "~/.cargo",
-        config: ".cargo",
-        mount: "/root/.cargo",
-        kind: "directory",
+        host: "~/.cargo/config.toml",
+        config: ".cargo/config.toml",
+        mount: "/root/.cargo/config.toml",
+        kind: "file",
       },
       {
-        host: "~/.rustup",
-        config: ".rustup",
-        mount: "/root/.rustup",
-        kind: "directory",
+        host: "~/.cargo/credentials.toml",
+        config: ".cargo/credentials.toml",
+        mount: "/root/.cargo/credentials.toml",
+        kind: "file",
       },
     ],
   },
@@ -185,7 +172,6 @@ export const TOOL_PACKS = {
     shouldEnable: exec => commandExists(exec, "go"),
     dockerfileLines: ["RUN apt-get update && apt-get install -y golang"],
     config: [
-      { host: "~/go", config: "go", mount: "/root/go", kind: "directory" },
       {
         host: "~/.config/go",
         config: ".config/go",
@@ -287,12 +273,6 @@ export const TOOL_PACKS = {
         host: "~/.local/state/nvim",
         config: ".local/state/nvim",
         mount: "/root/.local/state/nvim",
-        kind: "directory",
-      },
-      {
-        host: "~/.cache/nvim",
-        config: ".cache/nvim",
-        mount: "/root/.cache/nvim",
         kind: "directory",
       },
     ],
