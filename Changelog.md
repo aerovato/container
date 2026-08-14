@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.2
+
+Fixes:
+
+- Refine Bun, Deno, Rust, Go, and Neovim tool-pack mounts to keep runtime files container-managed
+
 ## v3.5.1
 
 Fixes:
