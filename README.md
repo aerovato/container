@@ -2,6 +2,8 @@
   <img src="https://raw.githubusercontent.com/aerovato/container/main/.github/README/banner.jpg" alt="Container by Aerovato Research" />
 </p>
 
+> ##### Built with [Operator Memory](https://github.com/aerovato/operator-memory)
+
 # `container`
 
 Persistent, isolated workspaces for AI coding agents.
@@ -125,6 +127,23 @@ See [Configuration](skills/container/references/configuration.md) for settings d
 The current project is mounted read-write and can be changed or deleted. Enabled configurations and optional credentials may also be available inside the container. Containers retain network access, and `container` does not protect against prompt injection or agent misalignment.
 
 Keep important work under version control and only mount resources the agent needs.
+
+## Built with Operator
+
+This repository is maintained with [Operator Memory](https://github.com/aerovato/operator-memory) — durable, agent-maintained documentation that lets AI agents work on the project with full context across sessions. The published brain lives in [`.operator-shared/`](.operator-shared/).
+
+To work on Container with the same context, install Operator Memory:
+
+```bash
+# With NPM
+npm install --global @aerovato/operator-helper
+
+# With Bun
+bun add --global --minimum-release-age 0 @aerovato/operator-helper@latest
+
+# Install OpenCode plugin
+operator-helper install opencode
+```
 
 ## License
 

@@ -1,6 +1,6 @@
 # Container — Agent Instructions
 
-This project uses [Operator Memory](https://github.com/aerovato/operator) for durable, agent-maintained documentation (instructions, specs, codebase index).
+This project uses [Operator Memory](https://github.com/aerovato/operator-memory) for durable, agent-maintained documentation (instructions, specs, codebase index).
 
 - Shared instructions: `.operator-shared/operator.md`
 - Shared Project Index (codebase map): `.operator-shared/index/index.md`
