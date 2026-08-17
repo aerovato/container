@@ -194,21 +194,4 @@ export const HARNESS_PACKS = {
       },
     ],
   },
-  "operator-memory": {
-    id: "operator-memory",
-    name: "Operator Memory Plugin",
-    shouldEnable: exec => commandExists(exec, "operator-helper"),
-    dockerfileLines: [
-      "RUN npm install --global @aerovato/operator-helper",
-      "RUN operator-helper install opencode || true",
-    ],
-    config: [
-      {
-        host: "~/.operator",
-        config: ".operator",
-        mount: "/root/.operator",
-        kind: "directory",
-      },
-    ],
-  },
 } as const satisfies Record<string, HarnessPack>;
