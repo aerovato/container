@@ -277,4 +277,18 @@ export const TOOL_PACKS = {
       },
     ],
   },
+  "operator-memory": {
+    id: "operator-memory",
+    name: "Operator Memory",
+    shouldEnable: exec => commandExists(exec, "operator-helper"),
+    dockerfileLines: ["RUN npm install --global @aerovato/operator-helper"],
+    config: [
+      {
+        host: "~/.operator",
+        config: ".operator",
+        mount: "/root/.operator",
+        kind: "directory",
+      },
+    ],
+  },
 } as const satisfies Record<string, ToolPack>;

@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.4
+
+Changes:
+
+- `operator-memory` is now a tool pack: installs the Operator Memory helper CLI (`@aerovato/operator-helper`) and persists `~/.operator`; no longer installs the OpenCode adapter, since mounted user config would shadow it
+
 ## v3.5.3
 
 Additions:
