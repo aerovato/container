@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.3
+
+Additions:
+
+- `operator-memory` harness pack: installs the Operator Memory helper (`@aerovato/operator-helper`) with the OpenCode adapter, mounted after all other harnesses, and persists `~/.operator`
+
 ## v3.5.2
 
 Fixes:
