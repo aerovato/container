@@ -21,6 +21,7 @@ import { detectInstallSource, upgradeCommand } from "../src/commands/upgrade";
 import * as clack from "@clack/prompts";
 import { getBuildDirty } from "../src/commands/shared";
 import { FsReader, Filesystem } from "../src/platform/fs";
+import pkg from "../package.json";
 
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
 const queue: Array<{
@@ -174,7 +175,7 @@ describe("upgradeCommand", () => {
   it("skips upgrade when already current", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ tag_name: "v3.4.6" }),
+      json: async () => ({ tag_name: `v${pkg.version}` }),
     });
 
     await upgradeCommand(
@@ -186,7 +187,7 @@ describe("upgradeCommand", () => {
 
     expect(calls).toEqual([]);
     expect(clack.log.info).toHaveBeenCalledWith(
-      "container is already up to date (3.4.6).",
+      `container is already up to date (${pkg.version}).`,
     );
   });
 
