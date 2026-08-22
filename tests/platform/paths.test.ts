@@ -107,6 +107,12 @@ describe("generateContainerName", () => {
     );
   });
 
+  it("replaces Docker-invalid project name characters", () => {
+    expect(generateContainerName("/home/user/Hello World!")).toMatch(
+      /^container-Hello-World--[a-f0-9]{8}$/,
+    );
+  });
+
   it("unifies native Windows and WSL paths for the same project", () => {
     const windowsName = generateContainerName("C:\\Users\\dev\\project");
     const wslName = generateContainerName("/mnt/c/Users/dev/project");

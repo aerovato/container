@@ -57,7 +57,9 @@ function canonicalizeProjectPath(projectPath: string): string {
 
 export function generateContainerName(projectPath: string): string {
   const canonicalPath = canonicalizeProjectPath(projectPath);
-  const projectName = path.basename(canonicalPath);
+  const projectName = path
+    .basename(canonicalPath)
+    .replace(/[^a-zA-Z0-9_.-]+/g, "-");
   const pathHash = crypto
     .createHash("sha1")
     .update(canonicalPath)
