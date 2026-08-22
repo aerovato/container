@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.5
+
+Fixes:
+
+- Sanitize project path names when generating container names, preventing Docker-invalid characters from causing container creation failures
+
 ## v3.5.4
 
 Changes:
