@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.5.6
+
+Additions:
+
+- `enhanced-tools` tool pack now mounts `~/.ignore` → `/root/.ignore`, giving ripgrep, fd, and other `ignore`-crate tools a shared global ignore file inside the container
+
 ## v3.5.5
 
 Fixes:
