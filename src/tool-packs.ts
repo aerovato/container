@@ -40,6 +40,12 @@ export const TOOL_PACKS = {
     ],
     config: [
       {
+        host: "~/.ignore",
+        config: ".ignore",
+        mount: "/root/.ignore",
+        kind: "file",
+      },
+      {
         host: "~/.ripgreprc",
         config: ".ripgreprc",
         mount: "/root/.ripgreprc",
