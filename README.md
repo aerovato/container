@@ -6,13 +6,13 @@
 
 # `container`
 
-Persistent, isolated workspaces for AI coding agents.
+Persistent Linux workspaces for software development.
 
-`container` gives each project its own Docker or Podman environment. Agents can install dependencies, configure tools, and modify their environment without polluting your base system or interfering with other projects.
+`container` gives each project its own Docker or Podman environment, with coding harnesses and development tools already installed. Workspaces persist across sessions, including packages and configuration. Agents are isolated to that project with no access to the rest of your system.
 
-Isolation also makes hands-off agent workflows more practical by limiting destructive operations to the project workspace and explicitly mounted resources.
+The same Linux environment runs on Windows, macOS, and Linux. Your `container` is local and open source, does not require an account, and is yours to customize.
 
-[Website](https://container.aerovato.com) · [Agent Skill](skills/container/SKILL.md)
+[Website](https://container.aerovato.com) · [Agent Skill](skills/container/SKILL.md) · [中文](README.cn.md)
 
 ## Quickstart
 
@@ -69,16 +69,25 @@ opencode
 npm install <package>
 ```
 
-## Agent Skill
+Multiple terminals can enter the same container.
 
-Want an agent to configure Container for you? Install the portable [Container skill](skills/container/SKILL.md) on the host, then ask your agent to set up packages, harnesses, tools, mounts, permissions, or migrations.
+## Customization
 
-```bash
-npx skills add aerovato/container --skill container
-npx skills add aerovato/container --skill container --global  # All projects
+`container` is infinitely customizable. Add packages and setup commands to the user layer:
+
+```text
+~/.code-container/Dockerfile.User
 ```
 
-The skill is host-side because agents inside managed containers cannot access Container's host configuration.
+Then rebuild it:
+
+```bash
+container build user
+```
+
+Common settings like tools and harnesses can be configured via `container settings`. More complex options, including runtime flags, mounts, and even base-image settings can be configured through `~/.code-container/settings.json`.
+
+See [Configuration](skills/container/references/configuration.md) for settings details and [Permissions](skills/container/references/permissions.md) for hands-off harness permissions.
 
 ## Common Commands
 
@@ -102,23 +111,16 @@ container build harness
 container build user
 ```
 
-## Customization
+## Agent Skill
 
-Add packages and setup commands to:
-
-```text
-~/.code-container/Dockerfile.User
-```
-
-Then rebuild the user layer:
+Want an agent to configure Container for you? Install the portable [Container skill](skills/container/SKILL.md) on the host, then ask your agent to set up packages, harnesses, tools, mounts, permissions, or migrations.
 
 ```bash
-container build user
+npx skills add aerovato/container --skill container
+npx skills add aerovato/container --skill container --global  # All projects
 ```
 
-Harnesses, tools, runtime flags, mounts, and base-image settings are configured through `~/.code-container/settings.json`.
-
-See [Configuration](skills/container/references/configuration.md) for settings details and [Permissions](skills/container/references/permissions.md) for hands-off harness permissions.
+The skill is host-side because agents inside managed containers cannot access Container's host configuration.
 
 ## Security
 
@@ -132,18 +134,7 @@ Keep important work under version control and only mount resources the agent nee
 
 This repository is maintained with [Operator Memory](https://github.com/aerovato/operator-memory) — durable, agent-maintained documentation that lets AI agents work on the project with full context across sessions. The published brain lives in [`.operator-shared/`](.operator-shared/).
 
-To work on Container with the same context, install Operator Memory:
-
-```bash
-# With NPM
-npm install --global @aerovato/operator-helper
-
-# With Bun
-bun add --global --minimum-release-age 0 @aerovato/operator-helper@latest
-
-# Install OpenCode plugin
-operator-helper install opencode
-```
+To work on Container with the same context, [we recommend installing Operator Memory.](https://github.com/aerovato/operator-memory#install-operator)
 
 ## License
 
