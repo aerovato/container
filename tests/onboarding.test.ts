@@ -75,7 +75,7 @@ describe("detectHarnesses (via runtime)", () => {
   it("detects harnesses returning exit code 0", () => {
     const ids = Object.keys(HARNESS_PACKS);
 
-    for (let i = 0; i < ids.length; i++) {
+    for (let i = 0; i < ids.length - 1; i++) {
       queue.push({ status: i === 0 ? 0 : 1, stdout: "", stderr: "" });
     }
 
@@ -85,11 +85,19 @@ describe("detectHarnesses (via runtime)", () => {
     }
 
     expect(detected).toEqual([ids[0]]);
-    expect(calls).toHaveLength(ids.length);
+    expect(calls).toHaveLength(ids.length - 1);
+  });
+
+  it("never auto-detects the legacy OpenCode V1 pack", () => {
+    expect(HARNESS_PACKS["opencode-v1"].shouldEnable(mockExecutor)).toBe(false);
+    expect(calls).toHaveLength(0);
+    expect(HARNESS_PACKS["opencode-v1"].config).toBe(
+      HARNESS_PACKS.opencode.config,
+    );
   });
 
   it("detects no harnesses when all fail", () => {
-    for (let i = 0; i < Object.keys(HARNESS_PACKS).length; i++) {
+    for (let i = 0; i < Object.keys(HARNESS_PACKS).length - 1; i++) {
       queue.push({ status: 1, stdout: "", stderr: "" });
     }
 

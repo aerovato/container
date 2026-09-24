@@ -50,12 +50,12 @@ read_if: Before navigating or searching the codebase; before deciding where new 
 - `src/commands/list.ts` — List command.
 - `src/commands/settings.ts` — Interactive settings menu (harnesses, tools, runtime, mounts) with rebuild prompt.
 - `src/commands/shared.ts` — Target resolution (`resolveTarget`), `ensureImageReady`, `getBuildDirty`.
-- `src/container.ts` — Mount generation (harness + tool packs), create/exec, last-session stop (`stopContainerIfLastSession`), orphan sweep (`stopOrphanedContainers`). Session counting delegates to `ContainerClient.attachedSessionCount`.
+- `src/container.ts` — Mount generation (harness + tool packs, deduplicates shared harness mounts), create/exec, last-session stop (`stopContainerIfLastSession`), orphan sweep (`stopOrphanedContainers`). Session counting delegates to `ContainerClient.attachedSessionCount`.
 - `src/docker.ts` — `buildImage` (4-stage + dirty clearing + prune), image/tag constants.
 - `src/dockerfile-core.ts` — Core defaults, resolve, `generateDockerfileCore`, image constants.
 - `src/dockerfile-tools.ts` — `generateDockerfileTools` from enabled tool packs.
 - `src/dockerfile-harness.ts` — `generateDockerfileHarness` from enabled harness packs.
-- `src/harness-packs.ts` — `HARNESS_PACKS` definitions with install commands and typed config mounts.
+- `src/harness-packs.ts` — `HARNESS_PACKS` definitions with install commands and typed config mounts; OpenCode V2 is default, V1 is manually selectable.
 - `src/tool-packs.ts` — `TOOL_PACKS` definitions with install commands and typed config mounts.
 - `src/container-client.ts` — `ContainerClient` class (wraps docker/podman via injected `Executor`); all container/image lifecycle ops incl. `attachedSessionCount` (session count via `docker top`, host-OS-independent).
 - `src/types.ts` — Zod schemas and shared types (Settings, State, DockerfileCoreConfig, HarnessPack, ToolPack, discriminated ConfigMount), `Result<T>`.
@@ -87,8 +87,8 @@ read_if: Before navigating or searching the codebase; before deciding where new 
 - `tests/args.test.ts` — Full coverage of `parseArgs` (all commands, targets, errors, `--`).
 - `tests/commands.test.ts` — build/stop/remove/list/create/attach/run flag routing + `getBuildDirty`.
 - `tests/config.test.ts` — SettingsStore/StateStore (load/save/validate Result), update check tests.
-- `tests/docker.test.ts` — full `ContainerClient` (listRunning, startedAt, `attachedSessionCount`), `buildImage` (stages, dirty, failures), dockerfile generators, `getMounts`, session helpers (`stopContainerIfLastSession`), orphan sweep.
-- `tests/onboarding.test.ts` — `needsOnboarding`, harness/tool detect (Executor-based), config migrate/default source helpers, and start-before-build behavior.
+- `tests/docker.test.ts` — full `ContainerClient` (listRunning, startedAt, `attachedSessionCount`), `buildImage` (stages, dirty, failures), dockerfile generators (including OpenCode versions), `getMounts`, session helpers (`stopContainerIfLastSession`), orphan sweep.
+- `tests/onboarding.test.ts` — `needsOnboarding`, harness/tool detect (Executor-based, including manual-only legacy harness), config migrate/default source helpers, and start-before-build behavior.
 - `tests/tos.test.ts` — ensureTosAccepted (accept/decline/cancel/load error paths).
 - `tests/setup.test.ts` — Runtime setup and migration tests.
 

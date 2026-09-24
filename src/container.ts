@@ -24,7 +24,8 @@ export function getMounts(
     if (!pack) continue;
     for (const c of pack.config) {
       ensureConfigExists(fs, c);
-      mounts.push(buildBindMount(configMountSourcePath(c), c.mount));
+      const mount = buildBindMount(configMountSourcePath(c), c.mount);
+      if (!mounts.includes(mount)) mounts.push(mount);
     }
   }
 
