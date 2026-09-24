@@ -1,5 +1,32 @@
-import { HarnessPack } from "./types";
+import { ConfigMount, HarnessPack } from "./types";
 import { commandExists } from "./platform/shell";
+
+const openCodeConfig: ConfigMount[] = [
+  {
+    host: "~/.config/opencode",
+    config: ".opencode",
+    mount: "/root/.config/opencode",
+    kind: "directory",
+  },
+  {
+    host: "~/.local/state/opencode",
+    config: ".local/state/opencode",
+    mount: "/root/.local/state/opencode",
+    kind: "directory",
+  },
+  {
+    host: "~/.local/share/opencode",
+    config: ".local/share/opencode",
+    mount: "/root/.local/share/opencode",
+    kind: "directory",
+  },
+  {
+    host: "~/.local/share/opentui",
+    config: ".local/share/opentui",
+    mount: "/root/.local/share/opentui",
+    kind: "directory",
+  },
+];
 
 export const HARNESS_PACKS = {
   claude: {
@@ -34,35 +61,17 @@ export const HARNESS_PACKS = {
   },
   opencode: {
     id: "opencode",
-    name: "OpenCode",
+    name: "OpenCode V2",
     shouldEnable: exec => commandExists(exec, "opencode"),
+    dockerfileLines: ["RUN curl -fsSL https://opencode.ai/v2/install | bash"],
+    config: openCodeConfig,
+  },
+  "opencode-v1": {
+    id: "opencode-v1",
+    name: "OpenCode V1",
+    shouldEnable: () => false,
     dockerfileLines: ["RUN npm install -g opencode-ai"],
-    config: [
-      {
-        host: "~/.config/opencode",
-        config: ".opencode",
-        mount: "/root/.config/opencode",
-        kind: "directory",
-      },
-      {
-        host: "~/.local/state/opencode",
-        config: ".local/state/opencode",
-        mount: "/root/.local/state/opencode",
-        kind: "directory",
-      },
-      {
-        host: "~/.local/share/opencode",
-        config: ".local/share/opencode",
-        mount: "/root/.local/share/opencode",
-        kind: "directory",
-      },
-      {
-        host: "~/.local/share/opentui",
-        config: ".local/share/opentui",
-        mount: "/root/.local/share/opentui",
-        kind: "directory",
-      },
-    ],
+    config: openCodeConfig,
   },
   codex: {
     id: "codex",

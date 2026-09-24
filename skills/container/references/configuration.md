@@ -91,7 +91,8 @@ Run `container build user` afterward. User Dockerfile changes are not tracked au
 Current harness IDs:
 
 - `claude`: Claude Code
-- `opencode`: OpenCode
+- `opencode`: OpenCode V2 (default; installs via `https://opencode.ai/v2/install`)
+- `opencode-v1`: OpenCode V1 (legacy npm installation; manual selection only)
 - `codex`: OpenAI Codex
 - `pi`: Pi
 - `gemini`: Gemini CLI

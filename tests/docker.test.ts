@@ -529,6 +529,24 @@ describe("generateDockerfileHarness", () => {
     expect(result).toContain("npm install -g @openai/codex");
   });
 
+  it("installs OpenCode V2 by default and preserves V1 as a separate pack", () => {
+    const v2 = generateDockerfileHarness(["opencode"]);
+    expect(v2).toContain(
+      "RUN curl -fsSL https://opencode.ai/v2/install | bash",
+    );
+    expect(v2).not.toContain("npm install -g opencode-ai");
+
+    const v1 = generateDockerfileHarness(["opencode-v1"]);
+    expect(v1).toContain("RUN npm install -g opencode-ai");
+    expect(v1).not.toContain("https://opencode.ai/v2/install");
+
+    const both = generateDockerfileHarness(["opencode", "opencode-v1"]);
+    expect(both).toContain(
+      "RUN curl -fsSL https://opencode.ai/v2/install | bash",
+    );
+    expect(both).toContain("RUN npm install -g opencode-ai");
+  });
+
   it("skips unknown harness ids", () => {
     const result = generateDockerfileHarness(["nonexistent"]);
     expect(result).toBe(
@@ -558,6 +576,15 @@ describe("getMounts", () => {
     expect(fs.statSync(path.join(CONFIGS_DIR, ".claude")).isDirectory()).toBe(
       true,
     );
+  });
+
+  it("mounts shared OpenCode configs once when both versions are enabled", () => {
+    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
+      enabledHarnesses: ["opencode", "opencode-v1"],
+    });
+
+    expect(mounts).toHaveLength(1 + 4);
+    expect(new Set(mounts).size).toBe(mounts.length);
   });
 
   it("creates missing file config sources in getMounts", () => {
