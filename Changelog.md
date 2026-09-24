@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.6.0
+
+Changes:
+
+- OpenCode V2 is now installed by the default `opencode` harness pack using the upstream V2 installer
+- The previous npm installation remains available as `opencode-v1`, a manually selected legacy harness pack; both versions can be enabled together
+
 ## v3.5.6
 
 Additions:
