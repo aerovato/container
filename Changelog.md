@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.7.0
+
+Changes:
+
+- Tool packs now install in a deterministic priority order (`python`, `bun`, `enhanced-tools` first) instead of following `enabledTools` order in settings
+
 ## v3.6.0
 
 Changes:
