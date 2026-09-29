@@ -1,6 +1,6 @@
 {
   "name": "@aerovato/container",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "Persistent Linux workspaces for agentic development.",
   "main": "dist/js/main.js",
   "bin": {
