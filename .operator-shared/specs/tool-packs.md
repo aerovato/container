@@ -48,7 +48,7 @@ Images are tagged under `localhost/aerovato/container-v3-*`:
 - Harness image: `...-harness:latest`
 - User image: `...:latest`
 
-`Dockerfile.Tools` is a generated file on disk written to the temp directory at build time. It is produced by `generateDockerfileTools(enabledToolIds)` in `src/dockerfile-tools.ts` and installs all enabled tool packs in order.
+`Dockerfile.Tools` is a generated file on disk written to the temp directory at build time. It is produced by `generateDockerfileTools(enabledToolIds)` in `src/dockerfile-tools.ts` and installs all enabled tool packs in order. Install order is determined by the `TOOL_PRIORITY` map in `src/dockerfile-tools.ts` (lower = earlier; essential runtimes like `python` and `bun` install first), not by `enabledTools` order in settings. Unlisted packs install last, stably in settings order.
 
 ## Staleness Detection
 
