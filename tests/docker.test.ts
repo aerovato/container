@@ -843,4 +843,20 @@ describe("generateDockerfileTools", () => {
       "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
     );
   });
+
+  it("installs prioritized tools before others regardless of settings order", () => {
+    const result = generateDockerfileTools([
+      "deno",
+      "enhanced-tools",
+      "python",
+      "bun",
+    ]);
+    const pythonIndex = result.indexOf("apt-get install -y python3");
+    const bunIndex = result.indexOf("curl -fsSL https://bun.sh/install");
+    const enhancedIndex = result.indexOf("apt-get install -y fd-find");
+    const denoIndex = result.indexOf("curl -fsSL https://deno.land/install.sh");
+    expect(pythonIndex).toBeLessThan(bunIndex);
+    expect(bunIndex).toBeLessThan(enhancedIndex);
+    expect(enhancedIndex).toBeLessThan(denoIndex);
+  });
 });
