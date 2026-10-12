@@ -56,7 +56,7 @@ export function createNewContainer(
   cliFlags: string[],
 ): Result<void> {
   const mounts = getMounts(fs, projectPath, projectName, settings);
-  const args = ["-d", "--name", containerName];
+  const args = ["-d", "--name", containerName, "--init"];
 
   args.push("-e", "TERM=xterm-256color");
   args.push("-e", "COLORTERM=truecolor");

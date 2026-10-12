@@ -216,6 +216,7 @@ describe("createNewContainer", () => {
     expect(runCall.command).toBe("docker");
     expect(runCall.args[0]).toBe("run");
     expect(runCall.args).toContain("-d");
+    expect(runCall.args).toContain("--init");
     expect(runCall.args).toContain("--name");
     expect(runCall.args).toContain("container-foo-abc12345");
     expect(runCall.args).toContain("TERM=xterm-256color");
