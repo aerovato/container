@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.7.1
+
+Fixes:
+
+- Containers now run with `--init`, so stopping delivers SIGTERM cleanly instead of escalating to SIGKILL (visible as a Podman warning on every session end)
+
 ## v3.7.0
 
 Changes:
