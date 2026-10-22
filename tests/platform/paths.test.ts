@@ -62,22 +62,22 @@ describe("expandHomePath", () => {
 });
 
 describe("resolveProjectPath", () => {
-  // Note: Node's `path` binds win32/posix at module load, so on a POSIX host
-  // only POSIX resolution can be exercised here. Drive-letter handling is
-  // therefore not asserted; canonicalization in generateContainerName covers
-  // the cross-environment mapping instead.
+  // Node's `path` binds to the host platform. Use host-native paths for
+  // resolution assertions; canonicalization tests below cover WSL mappings.
   it("returns cwd when input is undefined", () => {
     expect(resolveProjectPath(undefined)).toBe(process.cwd());
   });
 
   it("resolves a relative path to absolute", () => {
-    const result = resolveProjectPath("some/dir");
-    expect(result.startsWith("/")).toBe(true);
-    expect(result.endsWith("some/dir")).toBe(true);
+    const input = "some/dir";
+    const result = resolveProjectPath(input);
+    expect(result).toBe(path.resolve(input));
+    expect(path.isAbsolute(result)).toBe(true);
   });
 
-  it("returns an absolute path unchanged", () => {
-    expect(resolveProjectPath("/absolute/path")).toBe("/absolute/path");
+  it("returns a host-native absolute path unchanged", () => {
+    const absolutePath = path.resolve("absolute/path");
+    expect(resolveProjectPath(absolutePath)).toBe(absolutePath);
   });
 });
 
@@ -150,9 +150,10 @@ describe("resolveContainerName", () => {
     expect(name).toMatch(/^container-project-[a-f0-9]{8}$/);
   });
 
-  it("matches generateContainerName for the same input", () => {
-    expect(resolveContainerName("/home/user/project")).toBe(
-      generateContainerName("/home/user/project"),
+  it("matches generateContainerName for the resolved input", () => {
+    const projectPath = "/home/user/project";
+    expect(resolveContainerName(projectPath)).toBe(
+      generateContainerName(path.resolve(projectPath)),
     );
   });
 });
