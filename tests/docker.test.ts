@@ -63,6 +63,10 @@ function reset() {
 
 const fsReader = new Filesystem(fs as unknown as FsReader);
 
+function expectedMountSource(source: string): string {
+  return source.replace(/\\/g, "/");
+}
+
 beforeEach(() => {
   reset();
   vol.reset();
@@ -614,16 +618,16 @@ describe("getMounts", () => {
     });
 
     expect(mounts).not.toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, ".deno")},target=/root/.deno`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, ".deno"))},target=/root/.deno`,
     );
     expect(mounts).not.toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, ".rustup")},target=/root/.rustup`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, ".rustup"))},target=/root/.rustup`,
     );
     expect(mounts).not.toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, "go")},target=/root/go`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, "go"))},target=/root/go`,
     );
     expect(mounts).not.toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, ".cache/nvim")},target=/root/.cache/nvim`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, ".cache/nvim"))},target=/root/.cache/nvim`,
     );
   });
 
@@ -633,10 +637,10 @@ describe("getMounts", () => {
     });
 
     expect(mounts).toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, ".cargo/config.toml")},target=/root/.cargo/config.toml`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, ".cargo/config.toml"))},target=/root/.cargo/config.toml`,
     );
     expect(mounts).toContain(
-      `type=bind,source=${path.join(CONFIGS_DIR, ".cargo/credentials.toml")},target=/root/.cargo/credentials.toml`,
+      `type=bind,source=${expectedMountSource(path.join(CONFIGS_DIR, ".cargo/credentials.toml"))},target=/root/.cargo/credentials.toml`,
     );
   });
 
@@ -673,7 +677,7 @@ describe("getMounts", () => {
       systemMounts: { ssh: true },
     });
     expect(mounts).toContain(
-      `type=bind,source=${home}/.ssh,target=/root/.ssh,readonly`,
+      `type=bind,source=${expectedMountSource(`${home}/.ssh`)},target=/root/.ssh,readonly`,
     );
   });
 

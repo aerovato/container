@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import path from "path";
 import { fs, vol } from "memfs";
 import { ContainerClient } from "../src/container-client";
 import { Executor } from "../src/platform/shell";
@@ -7,6 +8,7 @@ import {
   APPDATA_DIR,
   SETTINGS_PATH,
   STATE_PATH,
+  STANDALONE_INSTALL_DIR,
   TEMP_DIR,
 } from "../src/platform/paths";
 import { buildCommand } from "../src/commands/build";
@@ -53,6 +55,10 @@ function reset() {
 }
 
 const fsReader = new Filesystem(fs as unknown as FsReader);
+
+function standaloneExecutable(name: string): string {
+  return path.join(STANDALONE_INSTALL_DIR, name);
+}
 
 function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
   const originalPlatform = process.platform;
@@ -125,9 +131,9 @@ describe("upgradeCommand", () => {
     vi.unstubAllGlobals();
   });
 
-  it("detects standalone installs under ~/.code-container/bin", () => {
+  it("detects standalone installs under the appdata bin directory", () => {
     expect(
-      detectInstallSource("/root/.code-container/bin/container", undefined),
+      detectInstallSource(standaloneExecutable("container"), undefined),
     ).toBe("standalone");
   });
 
@@ -155,11 +161,13 @@ describe("upgradeCommand", () => {
       json: async () => ({ tag_name: "v99.0.0" }),
     });
     const stateStore = new StateStore(fsReader, STATE_PATH);
-    await upgradeCommand(
-      mockExecutor,
-      stateStore,
-      "/usr/bin/node",
-      "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+    await withPlatform("linux", () =>
+      upgradeCommand(
+        mockExecutor,
+        stateStore,
+        "/usr/bin/node",
+        "/usr/lib/node_modules/@aerovato/container/dist/js/main.js",
+      ),
     );
     expect(calls[0]).toEqual({
       command: "npm",
@@ -221,7 +229,7 @@ describe("upgradeCommand", () => {
       return upgradeCommand(
         mockExecutor,
         new StateStore(fsReader, STATE_PATH),
-        "/root/.code-container/bin/container",
+        standaloneExecutable("container"),
         undefined,
       );
     });
@@ -245,7 +253,7 @@ describe("upgradeCommand", () => {
       return upgradeCommand(
         mockExecutor,
         new StateStore(fsReader, STATE_PATH),
-        "/root/.code-container/bin/container.exe",
+        standaloneExecutable("container.exe"),
         undefined,
       );
     });
@@ -278,7 +286,7 @@ describe("upgradeCommand", () => {
         upgradeCommand(
           mockExecutor,
           new StateStore(fsReader, STATE_PATH),
-          "/root/.code-container/bin/container",
+          standaloneExecutable("container"),
           undefined,
         ),
       ),
